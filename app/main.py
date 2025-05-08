@@ -6,8 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app import shutdown_db_client, startup_db_client
-from app.dependencies import startup_es_client, shutdown_es_client
+from app.dependencies import startup_es_client, shutdown_es_client, startup_db_client, shutdown_db_client
 from .routers import datasets
 
 

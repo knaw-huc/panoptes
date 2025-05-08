@@ -5,8 +5,7 @@ API endpoints for dealing with a dataset.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app import ElasticIndexDep, TenantDbDep
-from app.dependencies import DatasetDep
+from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
 from app.models import Facet
 
 router = APIRouter(
