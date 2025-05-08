@@ -6,7 +6,6 @@ Contains methods for finding articles.
 
 import math
 from elasticsearch import Elasticsearch
-from werkzeug.exceptions import NotFound
 
 
 class Index:
@@ -54,7 +53,7 @@ class Index:
                 )
             else:
                 for value in item["values"]:
-                    must_collection.append({"match": {item["field"] + ".keyword": value}})
+                    must_collection.append({"match": {item["field"]: value}})
         return must_collection
 
     def get_facet(self, field, amount, facet_filter, search_values):
@@ -67,7 +66,7 @@ class Index:
         :return:
         """
         terms = {
-            "field": field + ".keyword",
+            "field": field,
             "size": amount,
             "order": {
                 "_count": "desc"
@@ -252,24 +251,3 @@ class Index:
         return {"amount": response["hits"]["total"]["value"],
                 "pages": math.ceil(response["hits"]["total"]["value"] / length),
                 "items": [item["_source"] for item in response["hits"]["hits"]]}
-
-    def by_id(self, article_id):
-        """
-        Get an article by id
-        :param article_id:
-        :return:
-        """
-        res = self.client.get(index=self.index_name, id=article_id)
-        if not res['found']:
-            raise NotFound('Article not found')
-
-        data = res['_source']
-        if data['references'] != '':
-            ref = self.by_message_id(data['references'])
-            data['thread_reply'] = ref
-
-        replies = self.get_replies(data['message_id'])
-        if len(replies) > 0:
-            data['replies'] = [i['_source'] for i in replies]
-
-        return data

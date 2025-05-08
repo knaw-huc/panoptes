@@ -1,4 +1,8 @@
-from typing import Annotated, Optional, Type
+"""
+Dependencies for FastAPI to be used in the routers.
+"""
+
+from typing import Annotated
 
 from elasticsearch import Elasticsearch
 from fastapi import Depends, HTTPException, Header
@@ -7,39 +11,67 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.elastic_index import Index
 from app.models import Tenant, Dataset
 
-db_connection: Optional[AsyncIOMotorClient] = None
-es_client: Optional[Elasticsearch] = None
+database_connections = {}
 
 
-async def startup_db_client(app) -> None:
-    global db_connection
-    db_connection = AsyncIOMotorClient(
+async def startup_db_client(_app) -> None:
+    """
+    Init the MongoDB client.
+    :param _app:
+    :return:
+    """
+    database_connections["mongo"] = AsyncIOMotorClient(
         "mongodb://localhost:27017/",
     )
 
-async def startup_es_client(app) -> None:
-    global es_client
-    es_client = Elasticsearch([{"scheme": "http", "host": "localhost", "port": 9200}])
+async def startup_es_client(_app) -> None:
+    """
+    Init the Elasticsearch connection.
+    :param _app:
+    :return:
+    """
+    database_connections["elastic"] = Elasticsearch([{
+        "scheme": "http",
+        "host": "localhost",
+        "port": 9200}
+    ])
 
 
-async def shutdown_db_client(app) -> None:
-    global db_connection
-    db_connection.close()
+async def shutdown_db_client(_app) -> None:
+    """
+    Shut down the MongoDB client.
+    :param _app:
+    :return:
+    """
+    database_connections["mongo"].close()
 
-async def shutdown_es_client(app) -> None:
-    global es_client
-    es_client.close()
+async def shutdown_es_client(_app) -> None:
+    """
+    Close the Elasticsearch connection.
+    :param _app:
+    :return:
+    """
+    database_connections["elastic"].close()
 
 
 def get_main_db() -> AsyncIOMotorDatabase:
-    global db_connection
-    return db_connection.get_database("main")
+    """
+    Get the main database, which contains information about the tenants using the app.
+    :return:
+    """
+    return database_connections["mongo"].get_database("main")
 
 
 MainDbDep = Annotated[AsyncIOMotorClient, Depends(get_main_db)]
 
 
 async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] = None) -> Tenant:
+    """
+    Get information about the current tenant, based on the domain name used to access the app.
+    :param main_db:
+    :param host:
+    :return:
+    """
     domain = host.split(":")[0]
     tenant = await main_db['tenants'].find_one({'domain': domain})
     if not tenant:
@@ -50,16 +82,25 @@ async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] =
 TenantDep = Annotated[Tenant, Depends(get_tenant)]
 
 
-
 def get_tenant_db(tenant: TenantDep) -> AsyncIOMotorDatabase:
-    global db_connection
-    return db_connection.get_database(tenant.name)
+    """
+    Get the tenant specific database.
+    :param tenant:
+    :return:
+    """
+    return database_connections["mongo"].get_database(tenant.name)
 
 
 TenantDbDep = Annotated[AsyncIOMotorClient, Depends(get_tenant_db)]
 
 
 async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
+    """
+    Get the dataset which is being used.
+    :param tenant_db:
+    :param dataset_name:
+    :return:
+    """
     dataset = await tenant_db['datasets'].find_one({'name': dataset_name})
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -69,7 +110,11 @@ DatasetDep = Annotated[Dataset, Depends(get_dataset)]
 
 
 def get_es_index(dataset: DatasetDep) -> Index:
-    global es_client
-    return Index(es_client, dataset.es_index)
+    """
+    Get the Elasticsearch index for the current dataset.
+    :param dataset:
+    :return:
+    """
+    return Index(database_connections["elastic"], dataset.es_index)
 
 ElasticIndexDep = Annotated[Index, Depends(get_es_index)]

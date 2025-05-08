@@ -1,3 +1,7 @@
+"""
+Data models for use with the database.
+"""
+
 from typing import Optional, Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field
