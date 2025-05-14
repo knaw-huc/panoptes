@@ -2,7 +2,7 @@
 Data models for use with the database.
 """
 
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Dict
 
 from pydantic import BaseModel, BeforeValidator, Field
 
@@ -27,6 +27,8 @@ class Dataset(BaseModel):
     tenant_name: str
     name: str
     es_index: str
+    data_type: str
+    data_configuration: Dict[str, str]
 
 
 class Facet(BaseModel):

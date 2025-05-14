@@ -56,7 +56,7 @@ class Index:
                     must_collection.append({"match": {item["field"]: value}})
         return must_collection
 
-    def get_facet(self, field, amount, facet_filter, search_values):
+    def get_facet(self, field: str, amount: int, facet_filter: str, search_values: list):
         """
         Get a facet.
         :param field:
@@ -92,7 +92,7 @@ class Index:
                     "must": self.make_matches(search_values)
                 }
             }
-        response = self.client.search(index='articles', body=body)
+        response = self.client.search(index=self.index_name, body=body)
 
         return [{"key": hits["key"], "doc_count": hits["doc_count"]}
                 for hits in response["aggregations"]["names"]["buckets"]]
@@ -107,7 +107,7 @@ class Index:
         """
         ret_array = []
         response = self.client.search(
-            index="articles",
+            index=self.index_name,
             body=
             {
                 "query": {
@@ -146,7 +146,7 @@ class Index:
         ret_array = []
         path = field.split('.')[0]
         response = self.client.search(
-            index="articles",
+            index=self.index_name,
             body=
             {
                 "size": 0,
@@ -205,7 +205,7 @@ class Index:
             tmp[field] = {}
 
         response = self.client.search(
-            index="articles",
+            index=self.index_name,
             body={
                 "size": 0,
                 "aggs": aggs

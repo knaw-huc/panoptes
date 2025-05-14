@@ -8,8 +8,10 @@ from elasticsearch import Elasticsearch
 from fastapi import Depends, HTTPException, Header
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
+from app.config import get_settings, Settings
 from app.elastic_index import Index
 from app.models import Tenant, Dataset
+from app.services.datasets.connectors import DatasetConnector, CMDIEditorConnector
 
 database_connections = {}
 
@@ -20,8 +22,9 @@ async def startup_db_client(_app) -> None:
     :param _app:
     :return:
     """
+    settings = get_settings()
     database_connections["mongo"] = AsyncIOMotorClient(
-        "mongodb://localhost:27017/",
+        settings.mongo_connection,
     )
 
 async def startup_es_client(_app) -> None:
@@ -30,11 +33,13 @@ async def startup_es_client(_app) -> None:
     :param _app:
     :return:
     """
+    settings = get_settings()
+
     database_connections["elastic"] = Elasticsearch([{
-        "scheme": "http",
-        "host": "localhost",
-        "port": 9200}
-    ])
+        "scheme": settings.es_scheme,
+        "host": settings.es_host,
+        "port": settings.es_port,
+    }])
 
 
 async def shutdown_db_client(_app) -> None:
@@ -53,6 +58,8 @@ async def shutdown_es_client(_app) -> None:
     """
     database_connections["elastic"].close()
 
+
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 def get_main_db() -> AsyncIOMotorDatabase:
     """
@@ -75,7 +82,7 @@ async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] =
     domain = host.split(":")[0]
     tenant = await main_db['tenants'].find_one({'domain': domain})
     if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
+        raise HTTPException(status_code=404, detail="Domain name not known")
     return Tenant(**tenant)
 
 
@@ -107,6 +114,19 @@ async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
     return Dataset(**dataset)
 
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
+
+
+def get_dataset_connector(dataset: DatasetDep) -> DatasetConnector:
+    """
+    Depends on the type
+    :param dataset:
+    :return:
+    """
+    if dataset.data_type == "cmdi":
+        return CMDIEditorConnector(dataset.data_configuration)
+    raise HTTPException(status_code=500, detail="Dataset misconfigured")
+
+DatasetConnectorDep = Annotated[DatasetConnector, Depends(get_dataset_connector)]
 
 
 def get_es_index(dataset: DatasetDep) -> Index:

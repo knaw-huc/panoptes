@@ -5,7 +5,7 @@ API endpoints for dealing with a dataset.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
+from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep, DatasetConnectorDep
 from app.models import Facet
 
 router = APIRouter(
@@ -54,6 +54,24 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep):
     }
 
 
+class FacetRequestBody(BaseModel):
+    name: str
+    amount: int
+    filter: str
+    searchvalues: list
+
+
+@router.post("/facet")
+def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody):
+    """
+    Get options for a given facet
+    :param es_index:
+    :param facet:
+    :return:
+    """
+    return es_index.get_facet(facet.name, facet.amount, facet.filter, facet.searchvalues)
+
+
 class CreateFacetRequestBody(BaseModel):
     """
     Request body for facet creation.
@@ -95,4 +113,18 @@ async def create_facet(db: TenantDbDep, dataset: DatasetDep, facet_data: CreateF
     return {
         "message": "facet created",
         "facet": Facet(**created_facet),
+    }
+
+@router.get("/details/{item_id}")
+async def by_id(dataset: DatasetConnectorDep, item_id: str):
+    """
+    Get details for a specific item.
+    :param dataset:
+    :param item_id:
+    :return:
+    """
+    item_data = dataset.get_item(item_id)
+    return {
+        "item_id": item_id,
+        "item_data": item_data,
     }
