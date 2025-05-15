@@ -112,3 +112,32 @@ paths:
                         type:
                           description: Type of  facet. E.g. 'text' or 'range'
                           type: string
+  /datasets/{dataset_name}/facet:
+    post:
+      summary: Get Facet options
+      description: Get the available options for a specific facet.
+      tags:
+        - Facets
+      requestBody:
+        description: Search options
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: The Facet for which to get options
+                  type: string
+                  example: type
+                amount:
+                  description: How many results to retrieve
+                  type: integer
+                  example: 10
+                filter:
+                  description: String to filter results on. For searching in the list of facet options.
+                  type: string
+                searchvalues:
+                  description: Like in the 'browse' endpoint, the search query used. Used so only relevant facet options given the current search results are retrieved.
+                  type: array
+                  items:
+                    type: object
