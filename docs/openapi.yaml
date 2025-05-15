@@ -1,0 +1,114 @@
+openapi: 3.1.0
+info:
+  title: Panoptes
+  description: Panoptes dataset browser API specification
+  version: 1.0.0
+servers:
+  - url: '$BASE_DOMAIN/api'
+tags:
+  - name: Datasets
+    description: Endpoints for interacting with a dataset
+  - name: Facets
+    description: Endpoints for interacting with facets
+paths:
+  /datasets/{dataset_name}/browse:
+    post:
+      summary: Browse dataset
+      description: Search the index of the dataset.
+      tags:
+        - Datasets
+      requestBody:
+        description: Search parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                page:
+                  type: integer
+                page_length:
+                  type: integer
+                searchvalues:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      field:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+      responses:
+        200:
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  amount:
+                    type: integer
+                  pages:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /datasets/{dataset_name}/details/{item_id}:
+    get:
+      summary: Get item details
+      description: Get the details for a specific item in the dataset.
+      tags:
+        - Datasets
+      responses:
+        200:
+          description: Item details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item_id:
+                    type: string
+                  item_data:
+                    type: object
+        502:
+          description: The external API had an error. Only relevant for datasets which get their data directly from an external API.
+        504:
+          description: The external API timed out. Only relevant for datasets which get their data directly from an external API.
+
+  /datasets/{dataset_name}/facets:
+    get:
+      summary: Get facets
+      description: Get the facets used in this dataset.
+      tags:
+        - Facets
+      responses:
+        200:
+          description: Facets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  facets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          description: ID of this facet
+                          type: string
+                        dataset_id:
+                          description: ID of the dataset this belongs to
+                          type: string
+                        property:
+                          description: Property which this searches in.
+                          type: string
+                        name:
+                          description: Human readable name of the facet.
+                          type: string
+                        type:
+                          description: Type of  facet. E.g. 'text' or 'range'
+                          type: string

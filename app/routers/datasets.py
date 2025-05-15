@@ -23,7 +23,7 @@ class BrowseRequestBody(BaseModel):
     searchvalues: list
 
 
-@router.get("/browse")
+@router.post("/browse")
 async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody):
     """
     Search for articles using elasticsearch.
@@ -55,6 +55,9 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep):
 
 
 class FacetRequestBody(BaseModel):
+    """
+    Request body for retrieving facet options.
+    """
     name: str
     amount: int
     filter: str

@@ -41,10 +41,13 @@ class CMDIEditorConnector(DatasetConnector):
 
 
     def get_item(self, identifier: str):
-        request = requests.get(f"{self.api_base}/{identifier}", headers={
-            "Accept": "application/json"
-        })
-        if request.status_code != 200:
+        try:
+            request = requests.get(f"{self.api_base}/{identifier}", headers={
+                "Accept": "application/json"
+            }, timeout=5)
+        except requests.exceptions.Timeout as exc:
+            raise HTTPException(status_code=504, detail="External source timed out.") from exc
+        if request.status_code >= 400:
             print(request)
             raise HTTPException(status_code=502, detail="Unable to get data from external source")
         return request.json()
