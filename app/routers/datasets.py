@@ -1,7 +1,6 @@
 """
 API endpoints for dealing with a dataset.
 """
-import jmespath
 import jsonpath
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
