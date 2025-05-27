@@ -24,11 +24,13 @@ paths:
             schema:
               type: object
               properties:
-                page:
+                offset:
                   type: integer
-                page_length:
+                limit:
                   type: integer
-                searchvalues:
+                query:
+                  type: string
+                facets:
                   type: object
                   additionalProperties:
                     x-additionalPropertiesName: field
@@ -48,8 +50,6 @@ paths:
                 type: object
                 properties:
                   amount:
-                    type: integer
-                  pages:
                     type: integer
                   items:
                     type: array
@@ -141,12 +141,31 @@ paths:
                     - asc
                     - desc
                     - hits
-                searchvalues:
-                  description: Like in the 'browse' endpoint, the search query used. Used so only relevant facet options given the current search results are retrieved.
-                  type: array
-                  items:
+                facets:
+                  type: object
+                  additionalProperties:
+                    x-additionalPropertiesName: field
                     type: object
+                    properties:
+                      values:
+                        type: array
+                        items:
+                          type: string
 
+      responses:
+        200:
+          description: Facet results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    value:
+                      type: string
+                    count:
+                      type: number
 
 components:
   schemas:
