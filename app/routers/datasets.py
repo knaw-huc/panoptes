@@ -1,12 +1,13 @@
 """
 API endpoints for dealing with a dataset.
 """
-
+import jmespath
+import jsonpath
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep, DatasetConnectorDep
-from app.models import Facet
+from app.models import Facet, DetailProperty
 
 router = APIRouter(
     prefix="/datasets/{dataset_name}",
@@ -62,6 +63,7 @@ class FacetRequestBody(BaseModel):
     amount: int
     filter: str
     searchvalues: list
+    sort: str
 
 
 @router.post("/facet")
@@ -119,15 +121,32 @@ async def create_facet(db: TenantDbDep, dataset: DatasetDep, facet_data: CreateF
     }
 
 @router.get("/details/{item_id}")
-async def by_id(dataset: DatasetConnectorDep, item_id: str):
+async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
+                item_id: str, db: TenantDbDep):
     """
     Get details for a specific item.
+    :param db:
     :param dataset:
+    :param dataset_connector:
     :param item_id:
     :return:
     """
-    item_data = dataset.get_item(item_id)
+    item_data = dataset_connector.get_item(item_id)
+
+    cursor = db.detail_properties.find({
+        "dataset_id": dataset.id
+    })
+
+    properties = await cursor.to_list()
+    properties = [DetailProperty(**data) for data in properties]
+
     return {
         "item_id": item_id,
-        "item_data": item_data,
+        "item_data": [
+            {
+                "name": prop.name,
+                "type": prop.type,
+                "value": jsonpath.findall(prop.path, item_data)
+            } for prop in properties
+        ]
     }

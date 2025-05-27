@@ -39,7 +39,9 @@ async def startup_es_client(_app) -> None:
         "scheme": settings.es_scheme,
         "host": settings.es_host,
         "port": settings.es_port,
-    }])
+
+    }], basic_auth=(settings.es_username, settings.es_password)
+    , verify_certs=False)
 
 
 async def shutdown_db_client(_app) -> None:

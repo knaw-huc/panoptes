@@ -11,10 +11,10 @@ tags:
   - name: Facets
     description: Endpoints for interacting with facets
 paths:
-  /datasets/{dataset_name}/browse:
+  /datasets/{dataset_name}/search:
     post:
-      summary: Browse dataset
-      description: Search the index of the dataset.
+      summary: Search dataset
+      description: Search in the index of the dataset.
       tags:
         - Datasets
       requestBody:
@@ -29,16 +29,16 @@ paths:
                 page_length:
                   type: integer
                 searchvalues:
-                  type: array
-                  items:
+                  type: object
+                  additionalProperties:
+                    x-additionalPropertiesName: field
                     type: object
                     properties:
-                      field:
-                        type: string
                       values:
                         type: array
                         items:
                           type: string
+
       responses:
         200:
           description: Search results
@@ -55,6 +55,20 @@ paths:
                     type: array
                     items:
                       type: object
+                      properties:
+                        item_id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        tags:
+                          type: array
+                          items:
+                            type: string
+
+
+
   /datasets/{dataset_name}/details/{item_id}:
     get:
       summary: Get item details
@@ -72,7 +86,9 @@ paths:
                   item_id:
                     type: string
                   item_data:
-                    type: object
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Block'
         502:
           description: The external API had an error. Only relevant for datasets which get their data directly from an external API.
         504:
@@ -90,28 +106,11 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  facets:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        _id:
-                          description: ID of this facet
-                          type: string
-                        dataset_id:
-                          description: ID of the dataset this belongs to
-                          type: string
-                        property:
-                          description: Property which this searches in.
-                          type: string
-                        name:
-                          description: Human readable name of the facet.
-                          type: string
-                        type:
-                          description: Type of  facet. E.g. 'text' or 'range'
-                          type: string
+                type: array
+                items:
+                  oneOf:
+                    - $ref: "#/components/schemas/TextFacet"
+                    - $ref: "#/components/schemas/RangeFacet"
   /datasets/{dataset_name}/facet:
     post:
       summary: Get Facet options
@@ -136,8 +135,61 @@ paths:
                 filter:
                   description: String to filter results on. For searching in the list of facet options.
                   type: string
+                sort:
+                  type: string
+                  enum:
+                    - asc
+                    - desc
+                    - hits
                 searchvalues:
                   description: Like in the 'browse' endpoint, the search query used. Used so only relevant facet options given the current search results are retrieved.
                   type: array
                   items:
                     type: object
+
+
+components:
+  schemas:
+    Block:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          oneOf:
+            - type: string
+            - type: object
+              description: For example, CMDI
+            - type: array
+              items:
+                $ref: "#/components/schemas/Block"
+    TextFacet:
+      type: object
+      properties:
+        property:
+          description: Property which this searches in.
+          type: string
+        name:
+          description: Human readable name of the facet.
+          type: string
+        type:
+          type: string
+          enum: ['text']
+    RangeFacet:
+      type: object
+      properties:
+        property:
+          description: Property which this searches in.
+          type: string
+        name:
+          description: Human readable name of the facet.
+          type: string
+        type:
+          type: string
+          enum: ['range']
+        min:
+          type: integer
+        max:
+          type: integer
+        step:
+          type: integer

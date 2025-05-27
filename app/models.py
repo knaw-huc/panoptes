@@ -40,3 +40,14 @@ class Facet(BaseModel):
     property: str # Name of the field in the ES index
     name: str # Readable name
     type: str
+
+
+class DetailProperty(BaseModel):
+    """
+    Represents a property to show in the detail view.
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    dataset_id: PyObjectId
+    name: str
+    type: str
+    path: str # jmespath to the location of the value in the original data
