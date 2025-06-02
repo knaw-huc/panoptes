@@ -134,7 +134,7 @@ async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
 
     cursor = db.detail_properties.find({
         "dataset_id": dataset.id
-    })
+    }).sort("order")
 
     properties = await cursor.to_list()
     properties = [DetailProperty(**data) for data in properties]

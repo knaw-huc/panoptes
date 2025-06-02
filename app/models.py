@@ -50,4 +50,5 @@ class DetailProperty(BaseModel):
     dataset_id: PyObjectId
     name: str
     type: str
-    path: str # jmespath to the location of the value in the original data
+    order: int
+    path: str # jsonpath to the location of the value in the original data
