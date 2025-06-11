@@ -14,7 +14,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Add Poetry to the PATH
 ENV PATH="$POETRY_HOME/bin:$PROJECT_DIR/.venv/bin:$PATH"
 
-FROM python-base AS production
+#FROM python-base AS production
 
 # Install system dependencies
 RUN buildDeps="build-essential" \
@@ -42,9 +42,10 @@ RUN poetry run uv pip install -r requirements.txt
 
 # Set working directory and copy package files
 WORKDIR $PROJECT_DIR
+ENV PATH="$POETRY_HOME/bin:$PROJECT_DIR/.venv/bin:$PATH"
 COPY app ./app
 
 EXPOSE 8000
 
 # Set default command to run the application
-CMD ["poetry run uvicorn app:app --port 8000 --host 0.0.0.0"]
+ENTRYPOINT poetry run uvicorn app:app --port 8000 --host 0.0.0.0
