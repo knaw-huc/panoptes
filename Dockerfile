@@ -48,4 +48,4 @@ COPY app ./app
 EXPOSE 8000
 
 # Set default command to run the application
-ENTRYPOINT poetry run uvicorn app:app --port 8000 --host 0.0.0.0
+ENTRYPOINT ["poetry", "run", "uvicorn", "app:app", "--port 8000", "--host 0.0.0.0"]

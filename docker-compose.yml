@@ -1,8 +1,8 @@
 services:
   panoptes-backend:
     container_name: panoptes_backend
-#    image: ghcr.io/knaw-huc/panoptes:latest
-    image: panoptes-backend:latest
+    image: ghcr.io/knaw-huc/panoptes:v0.0.3
+#    image: panoptes-backend:latest
   elasticsearch:
     container_name: panoptes_es
     image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
