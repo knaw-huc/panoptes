@@ -1,7 +1,8 @@
 services:
   panoptes-backend:
     container_name: panoptes_backend
-    image: ghcr.io/knaw-huc/panoptes:v0.0.3
+#    image: ghcr.io/knaw-huc/panoptes:v0.0.4
+    image: registry.diginfra.net/tsd/panoptes-backend:beta-2
 #    image: panoptes-backend:latest
   elasticsearch:
     container_name: panoptes_es

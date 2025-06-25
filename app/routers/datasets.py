@@ -9,7 +9,7 @@ from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep, DatasetCo
 from app.models import Facet, DetailProperty
 
 router = APIRouter(
-    prefix="/datasets/{dataset_name}",
+    prefix="/api/datasets/{dataset_name}",
     tags=["datasets"]
 )
 
@@ -49,9 +49,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep):
 
     facets = await cursor.to_list()
 
-    return {
-        "facets": [Facet(**facet) for facet in facets]
-    }
+    return [Facet(**facet) for facet in facets]
 
 
 class FacetRequestBody(BaseModel):
