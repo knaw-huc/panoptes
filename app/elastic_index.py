@@ -46,7 +46,6 @@ class Index:
         must_collection = []
         for key, values in search_values.items():
             if key in ["year", "lines"]:
-                # TODO: make this depend on facet type
                 range_values = values[0]
                 r_array = range_values.split('-')
                 must_collection.append(
