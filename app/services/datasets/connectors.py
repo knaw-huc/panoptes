@@ -50,4 +50,4 @@ class CMDIEditorConnector(DatasetConnector):
         if request.status_code >= 400:
             print(request)
             raise HTTPException(status_code=502, detail="Unable to get data from external source")
-        return request.json()['record']
+        return request.json()

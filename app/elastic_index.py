@@ -5,6 +5,8 @@ Contains methods for finding articles.
 """
 
 import math
+from typing import Dict, List
+
 from elasticsearch import Elasticsearch
 
 
@@ -34,29 +36,30 @@ class Index:
         return ret_str + ".*"
 
     @staticmethod
-    def make_matches(search_values):
+    def make_matches(search_values: Dict[str, List[str]], query: str = '') -> List:
         """
         Create match queries.
         :param search_values:
+        :param query:
         :return:
         """
         must_collection = []
-        for item in search_values:
-            if item["field"] == "FREE_TEXT":
-                for value in item["values"]:
-                    must_collection.append({"multi_match": {"query": value, "fields": ["*"]}})
-            elif item["field"] in ["year", "lines"]:
-                range_values = item["values"][0]
+        for key, values in search_values.items():
+            if key in ["year", "lines"]:
+                # TODO: make this depend on facet type
+                range_values = values[0]
                 r_array = range_values.split('-')
                 must_collection.append(
-                    {"range": {item["field"]: {"gte": r_array[0], "lte": r_array[1]}}}
+                    {"range": {key: {"gte": r_array[0], "lte": r_array[1]}}}
                 )
             else:
-                for value in item["values"]:
-                    must_collection.append({"match": {item["field"]: value}})
+                must_collection.append({"terms": {key: values}})
+        if query != '':
+            must_collection.append({"multi_match": {"query": query, "fields": ["*"]}})
         return must_collection
 
-    def get_facet(self, field: str, amount: int, facet_filter: str, search_values: list):
+
+    def get_facet(self, field: str, amount: int, facet_filter: str, search_values: Dict[str, List]):
         """
         Get a facet.
         :param field:
@@ -219,21 +222,19 @@ class Index:
         return tmp
 
 
-    def browse(self, page, length, search_values):
+    def browse(self, offset: int, limit: int, search_values: Dict[str, List[str]], query: str = ''):
         """
         Search for articles.
-        :param page:
-        :param length:
-        :param search_values:
+        :param offset: Pagination offset.
+        :param limit: Pagination limit.
+        :param search_values: Dictionary of facets to filter on
+        :param query: Query for text-based search.
         :return:
         """
-        int_page = int(page)
-        start = (int_page - 1) * length
-
         if search_values:
             query = {
                 "bool": {
-                    "must": self.make_matches(search_values)
+                    "must": self.make_matches(search_values, query)
                 }
             }
         else:
@@ -241,13 +242,14 @@ class Index:
                 "match_all": {}
             }
 
+        print("query:", query)
 
         response = self.client.search(index=self.index_name, body={
             "query": query,
-            "size": length,
-            "from": start,
+            "size": limit,
+            "from": offset,
         })
 
         return {"amount": response["hits"]["total"]["value"],
-                "pages": math.ceil(response["hits"]["total"]["value"] / length),
+                "pages": math.ceil(response["hits"]["total"]["value"] / limit),
                 "items": [item["_source"] for item in response["hits"]["hits"]]}

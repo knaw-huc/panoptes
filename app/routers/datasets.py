@@ -1,6 +1,8 @@
 """
 API endpoints for dealing with a dataset.
 """
+from typing import Dict
+
 import jsonpath
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -18,19 +20,20 @@ class BrowseRequestBody(BaseModel):
     """
     Request body for searching in a dataset.
     """
-    page: int
-    page_length: int
-    searchvalues: list
+    offset: int = 0
+    limit: int = 10
+    facets: Dict[str, list]
+    query: str = ""
 
 
-@router.post("/browse")
+@router.post("/search")
 async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody):
     """
     Search for articles using elasticsearch.
     :return:
     """
     print(struc)
-    ret_struc = es_index.browse(struc.page, struc.page_length, struc.searchvalues)
+    ret_struc = es_index.browse(struc.offset, struc.limit, struc.facets)
     print(ret_struc)
     return ret_struc
 
@@ -59,7 +62,7 @@ class FacetRequestBody(BaseModel):
     name: str
     amount: int
     filter: str
-    searchvalues: list
+    facets: Dict[str, list]
     sort: str
 
 
@@ -71,7 +74,7 @@ def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody):
     :param facet:
     :return:
     """
-    return es_index.get_facet(facet.name, facet.amount, facet.filter, facet.searchvalues)
+    return es_index.get_facet(facet.name, facet.amount, facet.filter, facet.facets)
 
 
 class CreateFacetRequestBody(BaseModel):
