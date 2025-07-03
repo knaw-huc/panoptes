@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: Panoptes
   description: Panoptes dataset browser API specification
-  version: 1.0.0
+  version: $VERSION_NUMBER
 servers:
-  - url: '$BASE_DOMAIN/api'
+  - url: '/api'
 tags:
   - name: Datasets
     description: Endpoints for interacting with a dataset

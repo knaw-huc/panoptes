@@ -34,9 +34,9 @@ image yourself. There is a Docker Bake configuration file. In order to set the n
 IMAGE = "some-registry.com/your-image-name"
 TAG = "beta-1"
 ```
-And then build & push using:
+And then build
 ```shell
-docker buildx bake --push
+docker buildx bake
 ```
 
 ### Usage
@@ -52,7 +52,7 @@ The API is specified in the [OpenAPI specification](docs/openapi.yaml). A compil
 
 ## Support & Roadmap
 
-
+If you run into a problem, please report it by creating an issue on this repository.
 
 ## Changelog
 
