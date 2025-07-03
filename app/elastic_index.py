@@ -60,7 +60,8 @@ class Index:
 
     def get_facet(self, field: str, amount: int, facet_filter: str, search_values: Dict[str, List]):
         """
-        Get a facet.
+        Get the available options for a specific facet, based on a search query. This is used for
+        showing the options still relevant given the current search query.
         :param field:
         :param amount:
         :param facet_filter:
