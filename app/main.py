@@ -36,4 +36,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+def health_check():
+    """
+    Health check endpoint for Kubernetes.
+    :return:
+    """
+    return {"status": "ok"}
+
 app.include_router(datasets.router)

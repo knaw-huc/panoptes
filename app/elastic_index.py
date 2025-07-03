@@ -8,6 +8,23 @@ import math
 from typing import Dict, List
 
 from elasticsearch import Elasticsearch
+from pydantic.dataclasses import dataclass
+
+
+@dataclass
+class FilterOptions:
+    """
+    Options for filtering in a dataset
+    """
+    facets: Dict[str, List[str]]
+    query: str = ""
+
+    def not_empty(self):
+        """
+        Check if filtering should be performed.
+        :return:
+        """
+        return bool(self.facets) or self.query != ""
 
 
 class Index:
@@ -36,15 +53,14 @@ class Index:
         return ret_str + ".*"
 
     @staticmethod
-    def make_matches(search_values: Dict[str, List[str]], query: str = '') -> List:
+    def make_matches(filter_options: FilterOptions) -> List:
         """
         Create match queries.
-        :param search_values:
-        :param query:
+        :param filter_options:
         :return:
         """
         must_collection = []
-        for key, values in search_values.items():
+        for key, values in filter_options.facets.items():
             if key in ["year", "lines"]:
                 range_values = values[0]
                 r_array = range_values.split('-')
@@ -53,19 +69,21 @@ class Index:
                 )
             else:
                 must_collection.append({"terms": {key: values}})
-        if query != '':
-            must_collection.append({"multi_match": {"query": query, "fields": ["*"]}})
+        if filter_options.query != '':
+            must_collection.append(
+                {"multi_match": {"query": filter_options.query, "fields": ["*"]}}
+            )
         return must_collection
 
 
-    def get_facet(self, field: str, amount: int, facet_filter: str, search_values: Dict[str, List]):
+    def get_facet(self, field: str, amount: int, facet_filter: str, filter_options: FilterOptions):
         """
         Get the available options for a specific facet, based on a search query. This is used for
         showing the options still relevant given the current search query.
         :param field:
         :param amount:
         :param facet_filter:
-        :param search_values:
+        :param filter_options:
         :return:
         """
         terms = {
@@ -89,10 +107,10 @@ class Index:
             }
         }
 
-        if search_values:
+        if filter_options.not_empty():
             body["query"] = {
                 "bool": {
-                    "must": self.make_matches(search_values)
+                    "must": self.make_matches(filter_options)
                 }
             }
         response = self.client.search(index=self.index_name, body=body)
@@ -222,7 +240,7 @@ class Index:
         return tmp
 
 
-    def browse(self, offset: int, limit: int, search_values: Dict[str, List[str]], query: str = ''):
+    def browse(self, offset: int, limit: int, filter_options: FilterOptions):
         """
         Search for articles.
         :param offset: Pagination offset.
@@ -231,10 +249,10 @@ class Index:
         :param query: Query for text-based search.
         :return:
         """
-        if search_values:
+        if filter_options.not_empty():
             query = {
                 "bool": {
-                    "must": self.make_matches(search_values, query)
+                    "must": self.make_matches(filter_options)
                 }
             }
         else:
