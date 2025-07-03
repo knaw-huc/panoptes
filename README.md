@@ -7,7 +7,7 @@ Panoptes is a multi-tenant dataset browser and search tool. This repository cont
 ## Table of Contents
 
 * [Introduction](#introduction)
-* [Quick start](#quick start)
+* [Quick start](#quick-start)
     * [Installation](#installation)
     * [Usage](#usage)
 * [Documentation](#documentation)
