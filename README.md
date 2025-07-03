@@ -1,8 +1,4 @@
-[![Docs (readthedocs)](https://readthedocs.org/projects/$NAME/badge/?version=latest&style=flat)](https://$NAME.readthedocs.io)
-[![CI Test (github)](https://github.com/$USER/$REPO/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/$USER/$REPO/actions/)
-[![Latest release (github)](https://img.shields.io/github/release/$USER/$REPO.svg)](https://github.com/$USER/$REPO/releases/)
-[![Latest release (pypi)](https://img.shields.io/pypi/v/$NAME.svg)](https://pypi.org/project/$NAME/)
-[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 
 # Panoptes
 
