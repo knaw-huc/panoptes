@@ -1,3 +1,8 @@
+"""
+dataclasses.py
+Data classes for dealing with the search services.
+"""
+
 from dataclasses import dataclass
 from typing import Dict, List
 
