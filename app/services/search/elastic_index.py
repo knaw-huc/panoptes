@@ -5,26 +5,11 @@ Contains methods for finding articles.
 """
 
 import math
-from typing import Dict, List
+from typing import List
 
 from elasticsearch import Elasticsearch
-from pydantic.dataclasses import dataclass
 
-
-@dataclass
-class FilterOptions:
-    """
-    Options for filtering in a dataset
-    """
-    facets: Dict[str, List[str]]
-    query: str = ""
-
-    def not_empty(self):
-        """
-        Check if filtering should be performed.
-        :return:
-        """
-        return bool(self.facets) or self.query != ""
+from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
 
 
 class Index:
@@ -115,7 +100,7 @@ class Index:
             }
         response = self.client.search(index=self.index_name, body=body)
 
-        return [{"key": hits["key"], "doc_count": hits["doc_count"]}
+        return [{"value": hits["key"], "count": hits["doc_count"]}
                 for hits in response["aggregations"]["names"]["buckets"]]
 
 
@@ -240,13 +225,12 @@ class Index:
         return tmp
 
 
-    def browse(self, offset: int, limit: int, filter_options: FilterOptions):
+    def browse(self, offset: int, limit: int, filter_options: FilterOptions) -> SearchResult:
         """
         Search for articles.
+        :param filter_options:
         :param offset: Pagination offset.
         :param limit: Pagination limit.
-        :param search_values: Dictionary of facets to filter on
-        :param query: Query for text-based search.
         :return:
         """
         if filter_options.not_empty():
@@ -268,6 +252,13 @@ class Index:
             "from": offset,
         })
 
-        return {"amount": response["hits"]["total"]["value"],
-                "pages": math.ceil(response["hits"]["total"]["value"] / limit),
-                "items": [item["_source"] for item in response["hits"]["hits"]]}
+        return SearchResult(
+            total_results=response['hits']['total']['value'],
+            pages=math.ceil(response["hits"]["total"]["value"] / limit),
+            items=[
+                ResultItem(
+                    es_result=item["_source"],
+                    index=item["_id"]
+                ) for item in response["hits"]["hits"]
+            ]
+        )

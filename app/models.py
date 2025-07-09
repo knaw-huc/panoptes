@@ -1,7 +1,7 @@
 """
 Data models for use with the database.
 """
-
+from enum import Enum
 from typing import Optional, Annotated, Dict
 
 from pydantic import BaseModel, BeforeValidator, Field
@@ -31,15 +31,35 @@ class Dataset(BaseModel):
     data_configuration: Dict[str, str]
 
 
+class FacetType(Enum):
+    """
+    Type of facet
+    """
+    TEXT = 'text'
+    NUMBER = 'number'
+
+
 class Facet(BaseModel):
     """
     Represents an indexed facet
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    dataset_id: PyObjectId
+    dataset_name: str
     property: str # Name of the field in the ES index
     name: str # Readable name
-    type: str
+    type: FacetType
+
+
+class ResultProperty(BaseModel):
+    """
+    Represents a property to show in the search results view.
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    dataset_name: str
+    name: str
+    type: FacetType
+    path: str
+    order: int
 
 
 class DetailProperty(BaseModel):
@@ -47,7 +67,7 @@ class DetailProperty(BaseModel):
     Represents a property to show in the detail view.
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    dataset_id: PyObjectId
+    dataset_name: str
     name: str
     type: str
     order: int

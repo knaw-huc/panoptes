@@ -9,9 +9,8 @@ from fastapi import Depends, HTTPException, Header
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import get_settings, Settings
-from app.elastic_index import Index
+from app.services.search.elastic_index import Index
 from app.models import Tenant, Dataset
-from app.services.datasets.connectors import DatasetConnector, CMDIEditorConnector
 
 database_connections = {}
 
@@ -117,18 +116,6 @@ async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
 
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
 
-
-def get_dataset_connector(dataset: DatasetDep) -> DatasetConnector:
-    """
-    Depends on the type
-    :param dataset:
-    :return:
-    """
-    if dataset.data_type == "cmdi":
-        return CMDIEditorConnector(dataset.data_configuration)
-    raise HTTPException(status_code=500, detail="Dataset misconfigured")
-
-DatasetConnectorDep = Annotated[DatasetConnector, Depends(get_dataset_connector)]
 
 
 def get_es_index(dataset: DatasetDep) -> Index:

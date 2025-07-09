@@ -3,10 +3,12 @@ Implementation specific classes for dealing with dataset connections.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Annotated
 
 import requests
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
+
+from app.dependencies import DatasetDep
 
 
 class DatasetConnector(ABC):
@@ -51,3 +53,16 @@ class CMDIEditorConnector(DatasetConnector):
             print(request)
             raise HTTPException(status_code=502, detail="Unable to get data from external source")
         return request.json()
+
+
+def get_dataset_connector(dataset: DatasetDep) -> DatasetConnector:
+    """
+    Depends on the type
+    :param dataset:
+    :return:
+    """
+    if dataset.data_type == "cmdi":
+        return CMDIEditorConnector(dataset.data_configuration)
+    raise HTTPException(status_code=500, detail="Dataset misconfigured")
+
+DatasetConnectorDep = Annotated[DatasetConnector, Depends(get_dataset_connector)]

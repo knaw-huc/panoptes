@@ -25,16 +25,7 @@ async def lifespan(application: FastAPI):
     await shutdown_db_client(application)
     await shutdown_es_client(application)
 
-
 app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/health")
 def health_check():
@@ -45,3 +36,11 @@ def health_check():
     return {"status": "ok"}
 
 app.include_router(datasets.router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
