@@ -3,7 +3,7 @@ Implementation specific classes for dealing with dataset connections.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Annotated
+from typing import Annotated
 
 import requests
 from fastapi import HTTPException, Depends
