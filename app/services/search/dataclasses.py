@@ -33,6 +33,14 @@ class ResultItem:
             prop.name: jsonpath.findall(prop.path, tmp_result)[0] for prop in properties
         }
 
+    def get_prop(self, name: str):
+        """
+        Get property
+        :param name:
+        :return:
+        """
+        return self.index if name == "_id" else self.es_result.get(name)
+
 @dataclass
 class FilterOptions:
     """
@@ -47,6 +55,14 @@ class FilterOptions:
         :return:
         """
         return bool(self.facets) or self.query != ""
+
+    def remove_facet(self, name: str):
+        """
+        Removes a facet from the filter.
+        :param name:
+        :return:
+        """
+        self.facets.pop(name, None)
 
 
 @dataclass

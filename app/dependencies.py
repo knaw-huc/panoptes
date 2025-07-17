@@ -117,7 +117,6 @@ async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
 
 
-
 def get_es_index(dataset: DatasetDep) -> Index:
     """
     Get the Elasticsearch index for the current dataset.

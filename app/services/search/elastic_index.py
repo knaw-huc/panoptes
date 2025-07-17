@@ -93,6 +93,7 @@ class Index:
         }
 
         if filter_options.not_empty():
+            filter_options.remove_facet(field)
             body["query"] = {
                 "bool": {
                     "must": self.make_matches(filter_options)
@@ -262,3 +263,29 @@ class Index:
                 ) for item in response["hits"]["hits"]
             ]
         )
+
+    def by_identifier(self, identifier: str, field: str) -> ResultItem:
+        """
+        Get a specific record by identifier.
+        :param field:
+        :param identifier:
+        :return:
+        """
+        response = self.client.search(index=self.index_name, body={
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "term": {
+                                field: identifier
+                            }
+                        }
+                    ]
+                }
+            },
+            "size": 1,
+            "from": 0,
+        })
+
+        return ResultItem(es_result=response["hits"]["hits"][0]["_source"],
+                          index=response["hits"]["hits"][0]["_id"])

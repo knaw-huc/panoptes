@@ -29,6 +29,7 @@ class Dataset(BaseModel):
     es_index: str
     data_type: str
     data_configuration: Dict[str, str]
+    detail_id: str # Field that determines the ID of an item
 
 
 class FacetType(Enum):
