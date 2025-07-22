@@ -12,5 +12,5 @@ class UnknownFacetsException(Exception):
     facets: List[str]
 
     def __init__(self, message: str, facets: List[str]):
-        super(UnknownFacetsException, self).__init__(message)
+        super().__init__(message)
         self.facets = facets
