@@ -10,7 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import get_settings, Settings
 from app.services.search.elastic_index import Index
-from app.models import Tenant, Dataset
+from app.models import Tenant, Dataset, Facet
 
 database_connections = {}
 
@@ -117,12 +117,20 @@ async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
 
 
-def get_es_index(dataset: DatasetDep) -> Index:
+async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     """
     Get the Elasticsearch index for the current dataset.
+    :param db:
     :param dataset:
     :return:
     """
-    return Index(database_connections["elastic"], dataset.es_index)
+    cursor = db['facets'].find({
+        "dataset_name": dataset.name
+    })
+
+    facets_raw = await cursor.to_list()
+
+    facets = [Facet(**facet) for facet in facets_raw]
+    return Index(database_connections["elastic"], dataset.es_index, facets)
 
 ElasticIndexDep = Annotated[Index, Depends(get_es_index)]

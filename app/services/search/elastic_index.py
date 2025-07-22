@@ -5,10 +5,12 @@ Contains methods for finding articles.
 """
 
 import math
-from typing import List
+from typing import List, Dict
 
 from elasticsearch import Elasticsearch
 
+from app.exceptions.search import UnknownFacetsException
+from app.models import Facet, FacetType
 from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
 
 
@@ -18,10 +20,15 @@ class Index:
     """
     client: Elasticsearch
     index_name: str
+    facet_configuration: Dict[str, Facet]
 
-    def __init__(self, client: Elasticsearch, index_name: str):
+    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet]):
         self.client = client
         self.index_name = index_name
+        self.facet_configuration = {
+            facet.property: facet
+            for facet in available_facets
+        }
 
     @staticmethod
     def no_case(str_in):
@@ -37,16 +44,20 @@ class Index:
                 ret_str = ret_str + "[" + char.upper() + char.lower() + "]"
         return ret_str + ".*"
 
-    @staticmethod
-    def make_matches(filter_options: FilterOptions) -> List:
+    def make_matches(self, filter_options: FilterOptions) -> List:
         """
         Create match queries.
         :param filter_options:
         :return:
         """
         must_collection = []
+        unknown_facets = []
         for key, values in filter_options.facets.items():
-            if key in ["year", "lines"]:
+            if key not in self.facet_configuration:
+                unknown_facets.append(key)
+                continue
+            facet = self.facet_configuration[key]
+            if facet.type == FacetType.NUMBER:
                 range_values = values[0]
                 r_array = range_values.split('-')
                 must_collection.append(
@@ -54,6 +65,8 @@ class Index:
                 )
             else:
                 must_collection.append({"terms": {key: values}})
+        if unknown_facets:
+            raise UnknownFacetsException("Unknown facets", unknown_facets)
         if filter_options.query != '':
             must_collection.append(
                 {"multi_match": {"query": filter_options.query, "fields": ["*"]}}

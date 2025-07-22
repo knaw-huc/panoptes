@@ -4,10 +4,11 @@ API endpoints for dealing with a dataset.
 from typing import Dict, List
 
 import jsonpath
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
+from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, DetailProperty, ResultProperty
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
@@ -37,7 +38,14 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
     """
     print(struc)
     filter_options = FilterOptions(facets=struc.facets, query=struc.query)
-    search_results = es_index.browse(struc.offset, struc.limit, filter_options)
+    try:
+        search_results = es_index.browse(struc.offset, struc.limit, filter_options)
+    except UnknownFacetsException as e:
+        raise HTTPException(status_code=400, detail={
+            "error": "unknown_facets",
+            "message": str(e),
+            "facets": e.facets
+        }) from e
     print(search_results)
 
     cursor = db.result_properties.find({
@@ -92,7 +100,14 @@ def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody):
     :return:
     """
     filter_options = FilterOptions(facets=facet.facets, query=facet.query)
-    return es_index.get_facet(facet.name, facet.amount, facet.filter, filter_options)
+    try:
+        return es_index.get_facet(facet.name, facet.amount, facet.filter, filter_options)
+    except UnknownFacetsException as e:
+        raise HTTPException(status_code=400, detail={
+            "error": "unknown_facets",
+            "message": str(e),
+            "facets": e.facets
+        }) from e
 
 
 class CreateFacetRequestBody(BaseModel):
