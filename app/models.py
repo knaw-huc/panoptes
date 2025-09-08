@@ -63,6 +63,9 @@ class BaseProperty(ABC):
     path: str
     order: int
 
+    def get_path(self):
+        return self.path
+
 
 class ResultProperty(BaseModel, BaseProperty):
     """
