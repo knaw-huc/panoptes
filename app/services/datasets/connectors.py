@@ -66,6 +66,22 @@ class CMDIEditorConnector(DatasetConnector):
         return request.json()
 
 
+class ElasticsearchConnector(DatasetConnector):
+    """
+    Connector using the Elasticsearch index
+    """
+    es_index: Index
+    dataset: Dataset
+
+    def __init__(self, dataset: Dataset, es_index: Index):
+        self.es_index = es_index
+        self.dataset = dataset
+
+    def get_item(self, identifier: str):
+        item = self.es_index.by_identifier(identifier, self.dataset.detail_id)
+        return item.es_result
+
+
 def get_dataset_connector(dataset: DatasetDep, elastic_index: ElasticIndexDep) -> DatasetConnector:
     """
     Depends on the type
@@ -75,6 +91,8 @@ def get_dataset_connector(dataset: DatasetDep, elastic_index: ElasticIndexDep) -
     """
     if dataset.data_type == "cmdi":
         return CMDIEditorConnector(dataset, elastic_index)
+    if dataset.data_type == "elasticsearch":
+        return ElasticsearchConnector(dataset, elastic_index)
     raise HTTPException(status_code=500, detail="Dataset misconfigured")
 
 DatasetConnectorDep = Annotated[DatasetConnector, Depends(get_dataset_connector)]

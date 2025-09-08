@@ -1,6 +1,7 @@
 """
 Data models for use with the database.
 """
+import dataclasses
 from enum import Enum
 from typing import Optional, Annotated, Dict
 
@@ -51,25 +52,27 @@ class Facet(BaseModel):
     type: FacetType
 
 
-class ResultProperty(BaseModel):
+class BaseProperty:
     """
-    Represents a property to show in the search results view.
+    Base class for property related fields. Combine with BaseModel to make sure the resulting class
+    becomes a model.
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     dataset_name: str
     name: str
-    type: FacetType
     path: str
     order: int
 
 
-class DetailProperty(BaseModel):
+class ResultProperty(BaseModel, BaseProperty):
+    """
+    Represents a property to show in the search results view.
+    """
+    type: FacetType
+
+
+class DetailProperty(BaseModel, BaseProperty):
     """
     Represents a property to show in the detail view.
     """
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    dataset_name: str
-    name: str
     type: str
-    order: int
-    path: str # jsonpath to the location of the value in the original data

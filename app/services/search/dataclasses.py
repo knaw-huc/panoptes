@@ -8,7 +8,7 @@ from typing import Dict, List
 
 import jsonpath
 
-from app.models import ResultProperty
+from app.models import ResultProperty, BaseProperty
 
 
 @dataclass
@@ -74,7 +74,7 @@ class SearchResult:
     pages: int
     items: List[ResultItem]
 
-    def format_results(self, properties: List[ResultProperty]) -> List[Dict]:
+    def format_results(self, properties: List[BaseProperty]) -> List[Dict]:
         """
         Processes the ES results into dicts with only the required properties.
         """
