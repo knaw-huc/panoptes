@@ -64,6 +64,10 @@ class BaseProperty(ABC):
     order: int
 
     def get_path(self):
+        """
+        Get the jsonpath of where to find this property.
+        :return:
+        """
         return self.path
 
 
