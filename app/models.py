@@ -1,7 +1,7 @@
 """
 Data models for use with the database.
 """
-import dataclasses
+from abc import ABC
 from enum import Enum
 from typing import Optional, Annotated, Dict
 
@@ -52,7 +52,7 @@ class Facet(BaseModel):
     type: FacetType
 
 
-class BaseProperty:
+class BaseProperty(ABC):
     """
     Base class for property related fields. Combine with BaseModel to make sure the resulting class
     becomes a model.

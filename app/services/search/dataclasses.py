@@ -8,7 +8,7 @@ from typing import Dict, List
 
 import jsonpath
 
-from app.models import ResultProperty, BaseProperty
+from app.models import BaseProperty
 
 
 @dataclass
@@ -19,7 +19,7 @@ class ResultItem:
     es_result: Dict
     index: str
 
-    def format_result(self, properties: List[ResultProperty]) -> Dict:
+    def format_result(self, properties: List[BaseProperty]) -> Dict:
         """
         Formats a single result into a dict with only the required fields.
         :param properties:
