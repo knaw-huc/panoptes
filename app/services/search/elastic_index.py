@@ -57,9 +57,9 @@ class Index:
                 unknown_facets.append(key)
                 continue
             facet = self.facet_configuration[key]
-            if facet.type == FacetType.NUMBER:
+            if facet.type == FacetType.RANGE:
                 range_values = values[0]
-                r_array = range_values.split('-')
+                r_array = range_values.split(':')
                 must_collection.append(
                     {"range": {key: {"gte": r_array[0], "lte": r_array[1]}}}
                 )

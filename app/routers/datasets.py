@@ -1,15 +1,15 @@
 """
 API endpoints for dealing with a dataset.
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import jsonpath
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
 from app.exceptions.search import UnknownFacetsException
-from app.models import Facet, DetailProperty, ResultProperty
+from app.models import Facet, DetailProperty, ResultProperty, FacetType
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 
@@ -62,10 +62,38 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
     }
 
 
+class FacetResponse(Facet):
+    """
+    A facet in a response. Added some additional fields compared to the Facet model so the min/max
+    values can also be returned.
+    """
+    min: Optional[int] = None
+    max: Optional[int] = None
+    step: Optional[int] = None
+
+    @model_serializer
+    def serialize(self):
+        """
+        Serialize
+        :return:
+        """
+        data = {
+            "property": self.property,
+            "name": self.name,
+            "type": self.type
+        }
+        if self.type == FacetType.RANGE:
+            data['min'] = self.min
+            data['max'] = self.max
+            data['step'] = self.step
+        return data
+
+
 @router.get("/facets")
-async def get_facets(db: TenantDbDep, dataset: DatasetDep):
+async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticIndexDep):
     """
     Get all facets for this dataset.
+    :param es_index:
     :param db:
     :param dataset:
     :return:
@@ -74,9 +102,20 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep):
         "dataset_name": dataset.name
     })
 
-    facets = await cursor.to_list()
+    facets_data = await cursor.to_list()
 
-    return [Facet(**facet) for facet in facets]
+    facets = {facet['property']: FacetResponse(**facet) for facet in facets_data}
+    range_props = [facet.property for facet in facets.values() if facet.type == FacetType.RANGE]
+
+    if len(range_props) > 0:
+        mins_maxes = es_index.get_min_max(range_props)
+
+        for prop, data in mins_maxes.items():
+            facets[prop].min = data['min']
+            facets[prop].max = data['max']
+            facets[prop].step = 1
+
+    return list(facets.values())
 
 
 class FacetRequestBody(BaseModel):
@@ -92,15 +131,26 @@ class FacetRequestBody(BaseModel):
 
 
 @router.post("/facet")
-def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody):
+async def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody, db: TenantDbDep,
+              dataset: DatasetDep):
     """
     Get options for a given facet
+    :param db:
+    :param dataset:
     :param es_index:
     :param facet:
     :return:
     """
+    cursor = db['facets'].find({
+        "dataset_name": dataset.name,
+        "property": facet.name
+    })
+    facet_data = (await cursor.to_list())[0]
+    facet_obj = Facet(**facet_data)
     filter_options = FilterOptions(facets=facet.facets, query=facet.query)
     try:
+        if facet_obj.type == FacetType.RANGE:
+            return es_index.get_min_max([facet.name])
         return es_index.get_facet(facet.name, facet.amount, facet.filter, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
@@ -118,40 +168,6 @@ class CreateFacetRequestBody(BaseModel):
     name: str
     type: str
 
-
-# @router.post("/facets")
-# async def create_facet(db: TenantDbDep, dataset: DatasetDep, facet_data: CreateFacetRequestBody):
-#     """
-#     Create a new facet for this dataset.
-#     :param facet_data:
-#     :param db:
-#     :param dataset:
-#     :return:
-#     """
-#     existing_facet = await db.facets.find_one({
-#         "dataset_id": dataset.id,
-#         "property": facet_data.property
-#     })
-#     if existing_facet:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Facet for property {facet_data.property} already exists"
-#         )
-#
-#     facet = Facet(
-#         dataset_id=dataset.id,
-#         property=facet_data.property,
-#         name=facet_data.name,
-#         type=FacetType(facet_data.type),
-#     )
-#
-#     result = await db.facets.insert_one(facet.model_dump(by_alias=True, exclude={"id"}))
-#     created_facet = await db.facets.find_one({"_id": result.inserted_id})
-#
-#     return {
-#         "message": "facet created",
-#         "facet": Facet(**created_facet),
-#     }
 
 @router.get("/details/{item_id}")
 async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
