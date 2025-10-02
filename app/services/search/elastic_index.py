@@ -149,7 +149,6 @@ class Index:
         def simplify_children(children: Dict) -> List:
             if len(children) == 0:
                 return []
-            # return [simplify_children(node["children"]) for node in children.values()]
             for child in children.values():
                 child["children"] = simplify_children(child["children"])
             return list(children.values())
