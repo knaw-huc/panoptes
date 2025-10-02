@@ -70,6 +70,7 @@ class FacetResponse(Facet):
     min: Optional[int] = None
     max: Optional[int] = None
     step: Optional[int] = None
+    tree: Optional[dict] = None
 
     @model_serializer
     def serialize(self):
@@ -86,6 +87,8 @@ class FacetResponse(Facet):
             data['min'] = self.min
             data['max'] = self.max
             data['step'] = self.step
+        if self.type == FacetType.TREE:
+            data['tree'] = self.tree
         return data
 
 
@@ -106,6 +109,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
 
     facets = {facet['property']: FacetResponse(**facet) for facet in facets_data}
     range_props = [facet.property for facet in facets.values() if facet.type == FacetType.RANGE]
+    # tree_props = [facet.property for facet in facets.values() if facet.type == FacetType.TREE]
 
     if len(range_props) > 0:
         mins_maxes = es_index.get_min_max(range_props)
@@ -114,6 +118,9 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
             facets[prop].min = data['min']
             facets[prop].max = data['max']
             facets[prop].step = 1
+
+    # for prop in tree_props:
+    #     facets[prop].tree = es_index.get_tree(prop)
 
     return list(facets.values())
 
@@ -151,6 +158,8 @@ async def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody, db: Tena
     try:
         if facet_obj.type == FacetType.RANGE:
             return es_index.get_min_max([facet.name])
+        if facet_obj.type == FacetType.TREE:
+            return es_index.get_tree(facet.name, facet.filter, filter_options)
         return es_index.get_facet(facet.name, facet.amount, facet.filter, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={

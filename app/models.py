@@ -40,6 +40,7 @@ class FacetType(Enum):
     TEXT = 'text'
     NUMBER = 'number'
     RANGE = 'range'
+    TREE = 'tree'
 
 
 class Facet(BaseModel):

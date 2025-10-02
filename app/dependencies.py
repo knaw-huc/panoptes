@@ -34,12 +34,17 @@ async def startup_es_client(_app) -> None:
     """
     settings = get_settings()
 
+    basic_auth = None
+
+    if settings.es_username is not None:
+        basic_auth = (settings.es_username, settings.es_password)
+
     database_connections["elastic"] = Elasticsearch([{
         "scheme": settings.es_scheme,
         "host": settings.es_host,
         "port": settings.es_port,
 
-    }], basic_auth=(settings.es_username, settings.es_password)
+    }], basic_auth=basic_auth
     , verify_certs=False)
 
 

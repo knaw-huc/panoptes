@@ -118,6 +118,45 @@ class Index:
                 for hits in response["aggregations"]["names"]["buckets"]]
 
 
+    def get_tree(self, field, facet_filter: str, filter_options: FilterOptions):
+        """
+        Get the tree with all options for a tree facet
+        :param filter_options:
+        :param facet_filter:
+        :param field:
+        :return:
+        """
+        options = self.get_facet(field, 10000, facet_filter,
+                                 filter_options)
+
+        tree = {}
+
+        for option in options:
+            parts = option["value"].split("/")
+            tmp_tree = tree
+            value = {}
+            for part in parts:
+                if part not in tmp_tree:
+                    tmp_tree[part] = {
+                        "name": part,
+                        "children": {}
+                    }
+                value = tmp_tree[part]
+                tmp_tree = tmp_tree[part]["children"]
+            value["value"] = option["value"]
+            value["count"] = option["count"]
+
+        def simplify_children(children: Dict) -> List:
+            if len(children) == 0:
+                return []
+            # return [simplify_children(node["children"]) for node in children.values()]
+            for child in children.values():
+                child["children"] = simplify_children(child["children"])
+            return list(children.values())
+
+        return simplify_children(tree)
+
+
     def get_filter_facet(self, field, facet_filter):
         """
         Get a filter facet.

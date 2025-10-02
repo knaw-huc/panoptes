@@ -160,12 +160,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    value:
-                      type: string
-                    count:
-                      type: number
+                  $ref: "#/components/schemas/FacetResult"
 
 components:
   schemas:
@@ -212,3 +207,17 @@ components:
           type: integer
         step:
           type: integer
+    FacetResult:
+      type: object
+      properties:
+        value:
+          type: string
+        count:
+          type: number
+        name:
+          type: string
+          description: For tree facets. Name of this node (value is the full path including parent nodes)
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetResult"

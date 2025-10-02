@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     es_scheme: str
     es_host: str
     es_port: int = 9200
-    es_username: str
-    es_password: str
+    es_username: str | None = None
+    es_password: str | None = None
     mongo_connection: str
 
     model_config = SettingsConfigDict(env_file=".env")
