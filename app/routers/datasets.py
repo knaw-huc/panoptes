@@ -172,13 +172,12 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
 
 
 @router.get("/facet/{name}/tree")
-async def get_tree(name: str, db: TenantDbDep, es_index: ElasticIndexDep, dataset: DatasetDep,
+async def get_tree(name: str, db: TenantDbDep, dataset: DatasetDep,
              parent: str | None = None):
     """
     Endpoint for lazy loading tree filters.
     :param name:
     :param db:
-    :param es_index:
     :param dataset:
     :param parent: Query param: parent value to get children from
     :return:
