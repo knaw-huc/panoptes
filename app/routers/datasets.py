@@ -4,7 +4,7 @@ API endpoints for dealing with a dataset.
 from typing import Dict, List, Optional
 
 import jsonpath
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
@@ -12,6 +12,7 @@ from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, DetailProperty, ResultProperty, FacetType
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
+from app.tasks.tree_facets import construct_tree
 
 router = APIRouter(
     prefix="/api/datasets/{dataset_name}",
@@ -129,7 +130,6 @@ class FacetRequestBody(BaseModel):
     """
     Request body for retrieving facet options.
     """
-    name: str
     amount: int
     filter: str
     facets: Dict[str, List[str]]
@@ -137,11 +137,12 @@ class FacetRequestBody(BaseModel):
     sort: str
 
 
-@router.post("/facet")
-async def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody, db: TenantDbDep,
+@router.post("/facet/{name}")
+async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBody, db: TenantDbDep,
               dataset: DatasetDep):
     """
     Get options for a given facet
+    :param name:
     :param db:
     :param dataset:
     :param es_index:
@@ -150,7 +151,7 @@ async def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody, db: Tena
     """
     cursor = db['facets'].find({
         "dataset_name": dataset.name,
-        "property": facet.name
+        "property": name
     })
     facet_data = (await cursor.to_list())[0]
     facet_obj = Facet(**facet_data)
@@ -159,14 +160,66 @@ async def get_facet(es_index: ElasticIndexDep, facet: FacetRequestBody, db: Tena
         if facet_obj.type == FacetType.RANGE:
             return es_index.get_min_max([facet.name])
         if facet_obj.type == FacetType.TREE:
-            return es_index.get_tree(facet.name, facet.filter, filter_options)
-        return es_index.get_facet(facet.name, facet.amount, facet.filter, filter_options)
+            # background_tasks.add_task(construct_tree, facet.name, dataset, db, es_index)
+            return es_index.get_tree(name, filter_options)
+        return es_index.get_facet(name, facet.amount, facet.filter, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
             "error": "unknown_facets",
             "message": str(e),
             "facets": e.facets
         }) from e
+
+
+@router.get("/facet/{name}/tree")
+async def get_tree(name: str, db: TenantDbDep, es_index: ElasticIndexDep, dataset: DatasetDep,
+             parent: str | None = None):
+    """
+    Endpoint for lazy loading tree filters.
+    :param name:
+    :param db:
+    :param es_index:
+    :param dataset:
+    :param parent: Query param: parent value to get children from
+    :return:
+    """
+    cursor = db['nodes'].find({
+        "dataset": dataset.name,
+        "facet_name": name,
+        "parent": parent,
+    })
+    nodes = await cursor.to_list()
+    return {
+        "nodes": [
+            {
+                "property": node["facet_name"],
+                "name": node["name"],
+                "value": node["value"],
+                "parent": node["parent"],
+                "hasChildren": node["has_children"]
+            }
+            for node in nodes
+        ],
+    }
+
+
+@router.post("/facet/{name}/rebuild", status_code=status.HTTP_202_ACCEPTED)
+def rebuild_tree(name: str, background_tasks: BackgroundTasks, db: TenantDbDep, dataset: DatasetDep,
+                 es_index: ElasticIndexDep):
+    """
+    Rebuild the tree for a given facet.
+    :param dataset:
+    :param db:
+    :param es_index:
+    :param name:
+    :param background_tasks:
+    :return:
+    """
+    background_tasks.add_task(construct_tree, name, dataset, db, es_index)
+    return {
+        "name": name,
+        "message": "rebuild tree scheduled"
+    }
 
 
 class CreateFacetRequestBody(BaseModel):

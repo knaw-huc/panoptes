@@ -73,7 +73,6 @@ class Index:
             )
         return must_collection
 
-
     def get_facet(self, field: str, amount: int, facet_filter: str, filter_options: FilterOptions):
         """
         Get the available options for a specific facet, based on a search query. This is used for
@@ -117,22 +116,22 @@ class Index:
         return [{"value": hits["key"], "count": hits["doc_count"]}
                 for hits in response["aggregations"]["names"]["buckets"]]
 
-
-    def get_tree(self, field, facet_filter: str, filter_options: FilterOptions):
+    def get_tree(self, field, filter_options: FilterOptions):
         """
         Get the tree with all options for a tree facet
         :param filter_options:
-        :param facet_filter:
         :param field:
         :return:
         """
-        options = self.get_facet(field, 10000, facet_filter,
+        options = self.get_facet(field, 10000, "",
                                  filter_options)
+
+        print(options)
 
         tree = {}
 
         for option in options:
-            parts = option["value"].split("/")
+            parts = option["value"].split("|")
             tmp_tree = tree
             value = {}
             for part in parts:
@@ -151,10 +150,11 @@ class Index:
                 return []
             for child in children.values():
                 child["children"] = simplify_children(child["children"])
+                if "value" not in child:
+                    child["count"] = sum(int(c["count"]) for c in child["children"])
             return list(children.values())
 
         return simplify_children(tree)
-
 
     def get_filter_facet(self, field, facet_filter):
         """
@@ -193,53 +193,6 @@ class Index:
                 ret_array.append(buffer)
         return ret_array
 
-
-    def get_nested_facet(self, field, amount):
-        """
-        Get a nested facet.
-        :param field:
-        :param amount:
-        :return:
-        """
-        ret_array = []
-        path = field.split('.')[0]
-        response = self.client.search(
-            index=self.index_name,
-            body=
-            {
-                "size": 0,
-                "aggs": {
-                    "nested_terms": {
-                        "nested": {
-                            "path": path
-                        },
-                        "aggs": {
-                            "filter": {
-                                "filter": {
-                                    "regexp": {
-                                        "$field.raw": "$filter.*"
-                                    }
-                                },
-                                "aggs": {
-                                    "names": {
-                                        "terms": {
-                                            "field": "$field.raw",
-                                            "size": amount
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        )
-        for hits in response["aggregations"]["nested_terms"]["filter"]["names"]["buckets"]:
-            buffer = {"key": hits["key"], "doc_count": hits["doc_count"]}
-            ret_array.append(buffer)
-        return ret_array
-
-
     def get_min_max(self, fields):
         """
         Get the minimum and maximum value for fields in :fields:
@@ -275,7 +228,6 @@ class Index:
             tmp[field][agg_type] = value['value']
 
         return tmp
-
 
     def browse(self, offset: int, limit: int, filter_options: FilterOptions) -> SearchResult:
         """

@@ -1,7 +1,7 @@
 services:
   panoptes-backend:
     container_name: panoptes_backend
-    image: registry.diginfra.net/tsd/panoptes-backend:beta-59
+    image: registry.diginfra.net/tsd/panoptes-backend:beta-60
     environment:
       - ES_SCHEME=http
       - ES_HOST=host.docker.internal
