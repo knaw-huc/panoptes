@@ -44,7 +44,7 @@ docker buildx bake
 As this is a multi-tenant service, you should configure the domain names belonging to the tenants in the database configuration. Then, it's possible to add
 multiple datasets per tenant, pointing it to the correct 
 
-TODO: Document database configuration. It is still in very early stages, documentation will follow when the configuration is definitive.
+Database configuration is still a work in progress and subject to change. For the current status and what to configure, see [the wiki](https://github.com/knaw-huc/panoptes/wiki/MongoDB-configuration).
 
 ## Documentation
 
