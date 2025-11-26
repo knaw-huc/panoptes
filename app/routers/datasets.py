@@ -72,6 +72,7 @@ class FacetResponse(Facet):
     max: Optional[int] = None
     step: Optional[int] = None
     tree: Optional[dict] = None
+    order: int = 0
 
     @model_serializer
     def serialize(self):
@@ -84,7 +85,7 @@ class FacetResponse(Facet):
             "name": self.name,
             "type": self.type
         }
-        if self.type == FacetType.RANGE:
+        if self.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
             data['min'] = self.min
             data['max'] = self.max
             data['step'] = self.step
@@ -108,22 +109,26 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
 
     facets_data = await cursor.to_list()
 
-    facets = {facet['property']: FacetResponse(**facet) for facet in facets_data}
-    range_props = [facet.property for facet in facets.values() if facet.type == FacetType.RANGE]
-    # tree_props = [facet.property for facet in facets.values() if facet.type == FacetType.TREE]
+    facets = {facet['property']: Facet(**facet) for facet in facets_data}
+    facet_responses = {facet['property']: FacetResponse(**facet) for facet in facets_data}
+    range_props = [
+        facet.property for facet in facets.values()
+        if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM]
+    ]
 
     if len(range_props) > 0:
         mins_maxes = es_index.get_min_max(range_props)
 
         for prop, data in mins_maxes.items():
-            facets[prop].min = data['min']
-            facets[prop].max = data['max']
-            facets[prop].step = 1
+            facet = facets[prop]
+            facet_responses[prop].min = data['min']
+            facet_responses[prop].max = data['max']
+            facet_responses[prop].step = facet.interval
 
-    # for prop in tree_props:
-    #     facets[prop].tree = es_index.get_tree(prop)
+    response = list(facet_responses.values())
+    response.sort(key=lambda facet: facet.order)
 
-    return list(facets.values())
+    return response
 
 
 class FacetRequestBody(BaseModel):
@@ -161,8 +166,8 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
             return es_index.get_min_max([facet.name])
         if facet_obj.type == FacetType.TREE:
             # background_tasks.add_task(construct_tree, facet.name, dataset, db, es_index)
-            return es_index.get_tree(name, filter_options)
-        return es_index.get_facet(name, facet.amount, facet.filter, filter_options)
+            return es_index.get_tree(facet_obj, filter_options)
+        return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
             "error": "unknown_facets",

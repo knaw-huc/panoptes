@@ -40,6 +40,7 @@ class FacetType(Enum):
     TEXT = 'text'
     NUMBER = 'number'
     RANGE = 'range'
+    HISTOGRAM = 'histogram'
     TREE = 'tree'
 
 
@@ -52,11 +53,13 @@ class Facet(BaseModel):
     property: str # Name of the field in the ES index
     name: str # Readable name
     type: FacetType
+    order: int = 0
+    interval: Optional[int] = None
 
 
 class BaseProperty(ABC):
     """
-    Base class for property related fields. Combine with BaseModel to make sure the resulting class
+    Base class for property-related fields. Combine with BaseModel to make sure the resulting class
     becomes a model.
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)

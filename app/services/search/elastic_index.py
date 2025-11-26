@@ -57,7 +57,7 @@ class Index:
                 unknown_facets.append(key)
                 continue
             facet = self.facet_configuration[key]
-            if facet.type == FacetType.RANGE:
+            if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
                 range_values = values[0]
                 r_array = range_values.split(':')
                 must_collection.append(
@@ -73,39 +73,47 @@ class Index:
             )
         return must_collection
 
-    def get_facet(self, field: str, amount: int, facet_filter: str, filter_options: FilterOptions):
+    def get_facet(self, facet: Facet, amount: int, facet_filter: str, filter_options: FilterOptions):
         """
         Get the available options for a specific facet, based on a search query. This is used for
         showing the options still relevant given the current search query.
-        :param field:
+        :param facet:
         :param amount:
         :param facet_filter:
         :param filter_options:
         :return:
         """
-        terms = {
-            "field": field,
-            "size": amount,
-            "order": {
-                "_count": "desc"
+        if facet.type == FacetType.HISTOGRAM:
+            agg_settings = {
+                "field": facet.property,
+                "interval": facet.interval,
             }
-        }
+            agg_type = 'histogram'
+        else:
+            agg_settings = {
+                "field": facet.property,
+                "size": 10000000,
+                "order": {
+                    "_count": "desc"
+                }
+            }
+            agg_type = 'terms'
 
         if facet_filter:
             filtered_filter = ''.join([f"[{char.upper()}{char.lower()}]" for char in facet_filter])
-            terms["include"] = f'.*{filtered_filter}.*'
+            agg_settings["include"] = f'.*{filtered_filter}.*'
 
         body = {
             "size": 0,
             "aggs": {
                 "names": {
-                    "terms": terms
+                    agg_type: agg_settings
                 }
             }
         }
 
         if filter_options.not_empty():
-            filter_options.remove_facet(field)
+            filter_options.remove_facet(facet.property)
             body["query"] = {
                 "bool": {
                     "must": self.make_matches(filter_options)
@@ -116,14 +124,14 @@ class Index:
         return [{"value": hits["key"], "count": hits["doc_count"]}
                 for hits in response["aggregations"]["names"]["buckets"]]
 
-    def get_tree(self, field, filter_options: FilterOptions):
+    def get_tree(self, facet: Facet, filter_options: FilterOptions):
         """
         Get the tree with all options for a tree facet
         :param filter_options:
         :param field:
         :return:
         """
-        options = self.get_facet(field, 10000, "",
+        options = self.get_facet(facet, 10000, "",
                                  filter_options)
 
         print(options)
@@ -131,6 +139,7 @@ class Index:
         tree = {}
 
         for option in options:
+            # TODO: configure / or |
             parts = option["value"].split("|")
             tmp_tree = tree
             value = {}
@@ -158,10 +167,23 @@ class Index:
 
     def get_filter_facet(self, field, facet_filter):
         """
-        Get a filter facet.
-        :param field:
-        :param facet_filter:
-        :return:
+        Executes a search query using Elasticsearch to retrieve facet filtering
+        results based on the specified field and filter value. It performs an
+        aggregation to find terms within the field that match the given filter,
+        and sorts the results by document count in descending order. Only terms
+        that contain the filter value (case-insensitive) are included in the
+        returned list.
+
+        :param field: The field name in the Elasticsearch index to perform the
+            aggregation on.
+        :type field: str
+        :param facet_filter: The filter string to match against the terms in the
+            specified field.
+        :type facet_filter: str
+        :return: A list of dictionaries containing terms from the aggregation
+            results. Each dictionary contains a "key" (term name) and
+            "doc_count" (the number of documents matching the term).
+        :rtype: list[dict]
         """
         ret_array = []
         response = self.client.search(
