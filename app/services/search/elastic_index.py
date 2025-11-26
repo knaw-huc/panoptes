@@ -73,7 +73,8 @@ class Index:
             )
         return must_collection
 
-    def get_facet(self, facet: Facet, amount: int, facet_filter: str, filter_options: FilterOptions):
+    def get_facet(self, facet: Facet, amount: int, facet_filter: str,
+                  filter_options: FilterOptions):
         """
         Get the available options for a specific facet, based on a search query. This is used for
         showing the options still relevant given the current search query.
@@ -92,7 +93,7 @@ class Index:
         else:
             agg_settings = {
                 "field": facet.property,
-                "size": 10000000,
+                "size": amount,
                 "order": {
                     "_count": "desc"
                 }
@@ -127,8 +128,8 @@ class Index:
     def get_tree(self, facet: Facet, filter_options: FilterOptions):
         """
         Get the tree with all options for a tree facet
+        :param facet:
         :param filter_options:
-        :param field:
         :return:
         """
         options = self.get_facet(facet, 10000, "",
@@ -139,8 +140,7 @@ class Index:
         tree = {}
 
         for option in options:
-            # TODO: configure / or |
-            parts = option["value"].split("|")
+            parts = option["value"].split(facet.tree_separator)
             tmp_tree = tree
             value = {}
             for part in parts:

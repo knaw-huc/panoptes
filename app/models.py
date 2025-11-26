@@ -55,6 +55,7 @@ class Facet(BaseModel):
     type: FacetType
     order: int = 0
     interval: Optional[int] = None
+    tree_separator: Optional[str] = '|'
 
 
 class BaseProperty(ABC):
