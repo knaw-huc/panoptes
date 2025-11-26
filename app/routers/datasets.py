@@ -1,9 +1,9 @@
 """
 API endpoints for dealing with a dataset.
 """
-from typing import Dict, List, Optional
-
 import jsonpath
+
+from typing import Dict, List, Optional, Mapping, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from pydantic import BaseModel, model_serializer
 
@@ -18,7 +18,6 @@ router = APIRouter(
     prefix="/api/datasets/{dataset_name}",
     tags=["datasets"]
 )
-
 
 class BrowseRequestBody(BaseModel):
     """
@@ -229,34 +228,138 @@ class CreateFacetRequestBody(BaseModel):
     name: str
     type: str
 
+def python_type_to_schema_type(value: object) -> str:
+    """Map Python types to JSON Schema 'type' values (for the $ case)."""
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    if value is None:
+        return "null"
+    return "string"
 
-@router.get("/details/{item_id}")
-async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
-                item_id: str, db: TenantDbDep):
+def _build_schema_for_value(value: Any, schemas_by_name: dict[str, Any]) -> dict[str, Any]:
+    """
+    Recursively build a JSON-Schema-like structure for `value`, using `schemas_by_name` where keys match property names.
+
+    - object -> {"type": "object", "properties": {...}}
+    - array  -> {"type": "array", "items": {...}}
+    - scalar -> {"type": "<inferred>"}
+    """
+    # Object: recurse into fields
+    if isinstance(value, Mapping):
+        properties: dict[str, Any] = {}
+
+        for key, child in value.items():
+            base = dict(schemas_by_name.get(key, {}) or {})
+            child_schema = _build_schema_for_value(child, schemas_by_name)
+
+            if isinstance(child, Mapping):
+                base.setdefault("type", "object")
+                if "properties" in child_schema:
+                    nested = dict(base.get("properties", {}))
+                    nested.update(child_schema["properties"])
+                    base["properties"] = nested
+            elif isinstance(child, list):
+                base.setdefault("type", "array")
+                base["items"] = child_schema
+            else:
+                base.setdefault("type", python_type_to_schema_type(child))
+
+            properties[key] = base
+
+        return { "type": "object", "properties": properties }
+
+    # Array: use the first element as representative
+    if isinstance(value, list):
+        if not value:
+            return { "type": "array", "items": {} }
+        item_schema = _build_schema_for_value(value[0], schemas_by_name)
+        return { "type": "array", "items": item_schema }
+
+    # Scalar
+    return { "type": python_type_to_schema_type(value) }
+
+
+def _collect_object_schema(obj: Mapping[str, Any], schemas: dict[str, Any]) -> dict[str, Any]:
+    """
+    Build a schema dict for a single object based on its keys:
+    { field_name: schema[field_name], ... } if present in schemas.
+    """
+    return {
+        key: schemas[key]
+        for key in obj.keys()
+        if key in schemas
+    }
+
+@router.get("/details/{item_id}", summary="Get details for a specific item.")
+async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep, item_id: str, db: TenantDbDep):
     """
     Get details for a specific item.
-    :param db:
-    :param dataset:
-    :param dataset_connector:
-    :param item_id:
-    :return:
     """
+    # Get the full source object
     item_data = dataset_connector.get_item(item_id)
 
-    cursor = db.detail_properties.find({
-        "dataset_name": dataset.name
-    }).sort("order")
+    # Load detail properties for this dataset (config lines with jsonpath)
+    cursor = db.detail_properties.find({ "dataset_name": dataset.name }).sort("order")
+    detail_props_raw = await cursor.to_list(length=None)
+    detail_props = [DetailProperty(**data) for data in detail_props_raw]
 
-    properties = await cursor.to_list()
-    properties = [DetailProperty(**data) for data in properties]
+    # Load schemas for this dataset (keyed by *property name*)
+    schema_props = await db.schema_properties.find({ "dataset_name": dataset.name }).to_list(length=None)
+    schemas_by_name: dict[str, Any] = { doc["property"]: doc.get("schema") for doc in schema_props }
+
+    items: list[dict[str, Any]] = []
+    for prop in detail_props:
+        # Always resolve via JSONPath (including "$")
+        matches = jsonpath.findall(prop.path, item_data)
+
+        if not matches:
+            value: Any = None
+        elif len(matches) == 1:
+            value = matches[0]
+        else:
+            value = [m for m in matches]
+
+        resolved_type = prop.type  # default to configured type
+        resolved_schema: Any
+
+        if value is None:
+            resolved_schema = None
+
+        elif isinstance(value, (Mapping, list)):
+            # objects / arrays: recursive schema from actual data
+            resolved_schema = _build_schema_for_value(value, schemas_by_name)
+            if resolved_type is None:
+                resolved_type = resolved_schema.get("type")
+        else:
+            # primitive: use per-property schema if present
+            base_schema = schemas_by_name.get(prop.name) or {}
+            resolved_schema = dict(base_schema)
+            # ensure at least a type
+            if "type" not in resolved_schema and value is not None:
+                resolved_schema["type"] = python_type_to_schema_type(value)
+
+        # final fallback for type
+        if resolved_type is None and value is not None:
+            resolved_type = python_type_to_schema_type(value)
+
+        items.append(
+            {
+                "name": prop.name,
+                "type": resolved_type,
+                "value": value,
+                "schema": resolved_schema,
+            }
+        )
 
     return {
         "item_id": item_id,
-        "item_data": [
-            {
-                "name": prop.name,
-                "type": prop.type,
-                "value": jsonpath.findall(prop.path, item_data)[0]
-            } for prop in properties
-        ]
+        "item_data": items,
     }
