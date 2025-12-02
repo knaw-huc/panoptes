@@ -123,7 +123,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
             facet = facets[prop]
             facet_responses[prop].min = data['min']
             facet_responses[prop].max = data['max']
-            facet_responses[prop].step = facet.interval
+            facet_responses[prop].step = 1 # Front-end step should be independent from histogram size, add config
 
     response = list(facet_responses.values())
     response.sort(key=lambda facet: facet.order)
