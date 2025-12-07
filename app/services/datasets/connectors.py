@@ -78,6 +78,13 @@ class ElasticsearchConnector(DatasetConnector):
         self.dataset = dataset
 
     def get_item(self, identifier: str):
+        """
+        Retrieves an item from the Elasticsearch index using the given identifier.
+
+        :param identifier: A string representing the unique identifier of the item to
+            be retrieved.
+        :return: The Elasticsearch result corresponding to the provided identifier.
+        """
         item = self.es_index.by_identifier(identifier, self.dataset.detail_id)
         return item.es_result
 
