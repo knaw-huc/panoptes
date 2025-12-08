@@ -106,7 +106,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
     """
     cursor = db['facets'].find({
         "dataset_name": dataset.name
-    })
+    }).sort("order")
 
     facets_data = await cursor.to_list()
 
