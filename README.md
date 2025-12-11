@@ -10,6 +10,7 @@ Panoptes is a multi-tenant dataset browser and search tool. This repository cont
 * [Quick start](#quick-start)
     * [Installation](#installation)
     * [Usage](#usage)
+* [MongoDB Configuration](#mongodb-configuration)
 * [Documentation](#documentation)
 * [Support & Roadmap](#support-and-roadmap)
 * [Changelog](#changelog)
