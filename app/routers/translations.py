@@ -11,10 +11,13 @@ router = APIRouter(
     tags=["translations"]
 )
 
-@router.get("/{locale}", description="Gets the translations for the given locale")
-async def get_datasets(locale: str, db: TenantDbDep):
+@router.get("/{locale}",
+            name="Get translations for a given locale",
+            description="Gets the translations for the given locale.",
+            response_model=dict[str, str])
+async def get_translations(locale: str, db: TenantDbDep):
     """
-    Gets the datasets available for the current tenant.
+    Gets the translations available for the current tenant.
     :return: object containing (label key, label value) pairs of the available
              translations given a locale string
     """
