@@ -44,7 +44,7 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
         search_results = es_index.browse(struc.offset, struc.limit, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
-            "error": "unknown_facets",
+            "error": "unknown_f_acets",
             "message": str(e),
             "facets": e.facets
         }) from e

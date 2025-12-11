@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.dependencies import (startup_es_client, shutdown_es_client, startup_db_client,
                               shutdown_db_client)
-from .routers import datasets
-
+from .routers import datasets, translations
+from .routers import tenants
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -36,6 +36,8 @@ def health_check():
     return {"status": "ok"}
 
 app.include_router(datasets.router)
+app.include_router(tenants.router)
+app.include_router(translations.router)
 
 app.add_middleware(
     CORSMiddleware,
