@@ -3,7 +3,7 @@ API endpoints for dealing with a tenant.
 """
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.dependencies import TenantDbDep
 
