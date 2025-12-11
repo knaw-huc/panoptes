@@ -1,3 +1,7 @@
+"""
+API endpoints for dealing with a tenant.
+"""
+
 from fastapi import APIRouter
 
 from app.dependencies import TenantDbDep
@@ -9,6 +13,10 @@ router = APIRouter(
 
 @router.get("/current/datasets", description="Gets the available datasets for the current tenant")
 async def get_datasets(db: TenantDbDep):
+    """
+    Gets the datasets available for the current tenant.
+    :return: list of available datasets and their data configuration details
+    """
     cursor = db['datasets'].find({ 'tenant_name': db.name })
     selection = await cursor.to_list()
     return [ {
