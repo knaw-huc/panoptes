@@ -11,7 +11,7 @@ from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
-from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, SORT_ASC, SORT_HITS, SORT_DESC
+from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, SORT_ASC, SORT_DESC
 
 
 class Index:
@@ -95,7 +95,7 @@ class Index:
                "_count": SORT_DESC
             }
 
-            if filter_options.sort == SORT_DESC or filter_options.sort == SORT_ASC:
+            if filter_options.sort in (SORT_DESC, SORT_ASC):
                 agg_sort_settings['_key'] = filter_options.sort
 
             agg_settings = {
