@@ -161,7 +161,7 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
     })
     facet_data = (await cursor.to_list())[0]
     facet_obj = Facet(**facet_data)
-    filter_options = FilterOptions(facets=facet.facets, query=facet.query)
+    filter_options = FilterOptions(facets=facet.facets, query=facet.query, sort=facet.sort)
     try:
         if facet_obj.type == FacetType.RANGE:
             return es_index.get_min_max([facet.name])

@@ -10,6 +10,9 @@ import jsonpath
 
 from app.models import BaseProperty
 
+SORT_ASC = 'asc'
+SORT_DESC = 'desc'
+SORT_HITS = 'hits'
 
 @dataclass
 class ResultItem:
@@ -48,6 +51,7 @@ class FilterOptions:
     """
     facets: Dict[str, List[str]]
     query: str = ""
+    sort: str = SORT_HITS
 
     def not_empty(self):
         """

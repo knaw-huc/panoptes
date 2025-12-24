@@ -11,7 +11,7 @@ from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
-from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
+from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, SORT_ASC, SORT_HITS, SORT_DESC
 
 
 class Index:
@@ -91,12 +91,17 @@ class Index:
             }
             agg_type = 'histogram'
         else:
+            agg_sort_settings = {
+               "_count": SORT_DESC
+            }
+
+            if filter_options.sort == SORT_DESC or filter_options.sort == SORT_ASC:
+                agg_sort_settings['_key'] = filter_options.sort
+
             agg_settings = {
                 "field": facet.property,
                 "size": amount,
-                "order": {
-                    "_count": "desc"
-                }
+                "order": agg_sort_settings
             }
             agg_type = 'terms'
 
