@@ -11,7 +11,8 @@ from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
-from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, SORT_ASC, SORT_DESC
+from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
+from app.services.search.dataclasses import SORT_ASC, SORT_DESC
 
 
 class Index:
