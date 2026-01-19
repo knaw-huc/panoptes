@@ -68,6 +68,7 @@ class BaseProperty(ABC):
     name: str
     path: str
     order: int
+    config: Optional[Dict] = None
 
     def get_path(self):
         """

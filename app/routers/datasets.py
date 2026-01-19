@@ -261,7 +261,8 @@ async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
             {
                 "name": prop.name,
                 "type": prop.type,
-                "value": jsonpath.findall(prop.path, item_data)[0]
+                "value": jsonpath.findall(prop.path, item_data)[0],
+                "config": prop.config
             } for prop in properties
         ]
     }
