@@ -37,6 +37,7 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
     Search for articles using elasticsearch.
     :return:
     """
+    print(struc)
     filter_options = FilterOptions(facets=struc.facets, query=struc.query)
     try:
         search_results = es_index.browse(struc.offset, struc.limit, filter_options)
@@ -46,6 +47,7 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
             "message": str(e),
             "facets": e.facets
         }) from e
+    print(search_results)
 
     cursor = db.result_properties.find({
         "dataset_name": dataset.name
@@ -271,6 +273,7 @@ def process_property(prop: DetailProperty, item_data: Dict, data_configuration: 
     return {
         "name": prop.name,
         "type": prop.type,
+        "config": prop.config,
         "value": value
     }
 
