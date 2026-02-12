@@ -3,7 +3,6 @@ elastic_index.py
 This includes class Index for dealing with Elasticsearch.
 Contains methods for finding articles.
 """
-
 import math
 from typing import List, Dict
 
@@ -69,7 +68,12 @@ class Index:
             raise UnknownFacetsException("Unknown facets", unknown_facets)
         if filter_options.query != '':
             must_collection.append(
-                {"multi_match": {"query": filter_options.query, "fields": ["*"]}}
+                {
+                    "multi_match": {
+                        "query": filter_options.query,
+                        "fields": ["*"]
+                    }
+                }
             )
         return must_collection
 
@@ -84,12 +88,22 @@ class Index:
         :param filter_options:
         :return:
         """
+        val_key = "key"
         if facet.type == FacetType.HISTOGRAM:
             agg_settings = {
                 "field": facet.property,
                 "interval": facet.interval,
             }
             agg_type = 'histogram'
+        elif facet.type == FacetType.DATE:
+            agg_settings = {
+                "field": facet.property,
+                # "calendar_interval": facet.interval,
+                "buckets": 50,
+                "format": "yyyy-MM-dd"
+            }
+            agg_type = 'auto_date_histogram'
+            # val_key = "key_as_string"
         else:
             agg_settings = {
                 "field": facet.property,
@@ -121,9 +135,10 @@ class Index:
                 }
             }
         response = self.client.search(index=self.index_name, body=body)
+        response_data = [{"value": hits[val_key], "count": hits["doc_count"]}
+                         for hits in response["aggregations"]["names"]["buckets"]]
 
-        return [{"value": hits["key"], "count": hits["doc_count"]}
-                for hits in response["aggregations"]["names"]["buckets"]]
+        return response_data
 
     def get_tree(self, facet: Facet, filter_options: FilterOptions):
         """
@@ -134,8 +149,6 @@ class Index:
         """
         options = self.get_facet(facet, 10000, "",
                                  filter_options)
-
-        print(options)
 
         tree = {}
 
@@ -270,10 +283,17 @@ class Index:
                 "match_all": {}
             }
 
-        print("query:", query)
-
         response = self.client.search(index=self.index_name, body={
             "query": query,
+            "highlight": {
+                "number_of_fragments": 1,
+                "fields": {
+                    "*": {}
+                }
+            },
+            "sort": [
+                {"_score": {"order": "desc"}},
+            ],
             "size": limit,
             "from": offset,
         })
@@ -284,6 +304,7 @@ class Index:
             items=[
                 ResultItem(
                     es_result=item["_source"],
+                    highlight=item.get("highlight", {}),
                     index=item["_id"]
                 ) for item in response["hits"]["hits"]
             ]

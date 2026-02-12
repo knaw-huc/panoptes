@@ -5,6 +5,7 @@ from abc import ABC
 from enum import Enum
 from typing import Optional, Annotated, Dict
 
+import jsonpath
 from pydantic import BaseModel, BeforeValidator, Field
 
 # Represents an ObjectId field in the database.
@@ -41,6 +42,7 @@ class FacetType(Enum):
     NUMBER = 'number'
     RANGE = 'range'
     HISTOGRAM = 'histogram'
+    DATE = 'date'
     TREE = 'tree'
 
 
@@ -54,7 +56,7 @@ class Facet(BaseModel):
     name: str # Readable name
     type: FacetType
     order: int = 0
-    interval: Optional[int] = None
+    interval: int | str | None = None
     tree_separator: Optional[str] = '|'
 
 
@@ -76,6 +78,16 @@ class BaseProperty(ABC):
         :return:
         """
         return self.path
+
+
+    def render_value(self, item_data: Dict):
+        """
+        Get the value of this property from the given item_data dict using the jsonpath.
+        :param item_data:
+        :return:
+        """
+        results = jsonpath.findall(self.path, item_data)
+        return results[0] if len(results) > 0 else None
 
 
 class ResultProperty(BaseModel, BaseProperty):
