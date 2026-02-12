@@ -4,7 +4,6 @@ API endpoints for dealing with a dataset.
 from typing import Dict, List, Optional
 
 import boto3
-import jsonpath
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from pydantic import BaseModel, model_serializer
 
