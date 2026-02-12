@@ -4,7 +4,7 @@ Data classes for dealing with the search services.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import jsonpath
 
@@ -18,6 +18,16 @@ class ResultItem:
     """
     es_result: Dict
     index: str
+    highlight: Optional[Dict] = None
+
+
+    def format_highlight(self) -> str:
+        """
+        Format the highlight into a single string
+        :return:
+        """
+        return "<br />".join(["<br />".join(items) for items in self.highlight.values()])
+
 
     def format_result(self, properties: List[BaseProperty]) -> Dict:
         """
@@ -27,10 +37,12 @@ class ResultItem:
         """
         tmp_result = {
             **self.es_result,
-            '_id': self.index
+            '_id': self.index,
+            '_highlight': self.format_highlight(),
         }
         return {
             prop.name: jsonpath.findall(prop.path, tmp_result)[0] for prop in properties
+                if len(jsonpath.findall(prop.path, tmp_result))
         }
 
     def get_prop(self, name: str):

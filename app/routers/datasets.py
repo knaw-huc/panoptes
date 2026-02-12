@@ -3,6 +3,7 @@ API endpoints for dealing with a dataset.
 """
 from typing import Dict, List, Optional
 
+import boto3
 import jsonpath
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from pydantic import BaseModel, model_serializer
@@ -37,7 +38,6 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
     Search for articles using elasticsearch.
     :return:
     """
-    print(struc)
     filter_options = FilterOptions(facets=struc.facets, query=struc.query)
     try:
         search_results = es_index.browse(struc.offset, struc.limit, filter_options)
@@ -47,7 +47,6 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
             "message": str(e),
             "facets": e.facets
         }) from e
-    print(search_results)
 
     cursor = db.result_properties.find({
         "dataset_name": dataset.name
@@ -235,6 +234,48 @@ class CreateFacetRequestBody(BaseModel):
     type: str
 
 
+def process_property(prop: DetailProperty, item_data: Dict, data_configuration: Dict[str, str]):
+    """
+
+    :param prop:
+    :param item_data:
+    :param data_configuration:
+    :return:
+    """
+    value = prop.render_value(item_data)
+
+    if value is None:
+        return {
+            "name": prop.name,
+            "type": prop.type,
+            "value": None
+        }
+
+    if prop.type == 'image_s3':
+        # Get signed URL from s3
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=data_configuration['s3_key_id'],
+            aws_secret_access_key=data_configuration['s3_secret'],
+            endpoint_url=data_configuration['s3_endpoint']
+        )
+        value_without_prefix = value[5:]
+        bucket, path = value_without_prefix.split('/', 1)
+        print(f"Bucket: {bucket}, Path: {path}")
+        signed_url = s3.generate_presigned_url(
+            ClientMethod='get_object',
+            Params={'Bucket': bucket, 'Key': path},
+            ExpiresIn=3600
+        )
+        value = signed_url
+
+    return {
+        "name": prop.name,
+        "type": prop.type,
+        "value": value
+    }
+
+
 @router.get("/details/{item_id}")
 async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
                 item_id: str, db: TenantDbDep):
@@ -258,10 +299,6 @@ async def by_id(dataset_connector: DatasetConnectorDep, dataset: DatasetDep,
     return {
         "item_id": item_id,
         "item_data": [
-            {
-                "name": prop.name,
-                "type": prop.type,
-                "value": jsonpath.findall(prop.path, item_data)[0]
-            } for prop in properties
+            process_property(prop, item_data, dataset.data_configuration) for prop in properties
         ]
     }
