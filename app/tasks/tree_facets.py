@@ -16,8 +16,6 @@ async def construct_tree(facet_name: str, dataset: DatasetDep, db: TenantDbDep,
     :param dataset:
     :return:
     """
-    print(facet_name)
-
     cursor = db['facets'].find({
         "dataset_name": dataset.name,
         "property": facet_name

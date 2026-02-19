@@ -56,7 +56,7 @@ class Index:
                 unknown_facets.append(key)
                 continue
             facet = self.facet_configuration[key]
-            if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
+            if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM, FacetType.DATE]:
                 range_values = values[0]
                 r_array = range_values.split(':')
                 must_collection.append(
@@ -98,12 +98,11 @@ class Index:
         elif facet.type == FacetType.DATE:
             agg_settings = {
                 "field": facet.property,
-                # "calendar_interval": facet.interval,
                 "buckets": 50,
                 "format": "yyyy-MM-dd"
             }
             agg_type = 'auto_date_histogram'
-            # val_key = "key_as_string"
+            val_key = "key_as_string"
         else:
             agg_settings = {
                 "field": facet.property,
@@ -137,6 +136,7 @@ class Index:
         response = self.client.search(index=self.index_name, body=body)
         response_data = [{"value": hits[val_key], "count": hits["doc_count"]}
                          for hits in response["aggregations"]["names"]["buckets"]]
+
 
         return response_data
 

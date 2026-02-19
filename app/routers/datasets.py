@@ -37,7 +37,6 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
     Search for articles using elasticsearch.
     :return:
     """
-    print(struc)
     filter_options = FilterOptions(facets=struc.facets, query=struc.query)
     try:
         search_results = es_index.browse(struc.offset, struc.limit, filter_options)
@@ -47,7 +46,6 @@ async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: Tenant
             "message": str(e),
             "facets": e.facets
         }) from e
-    print(search_results)
 
     cursor = db.result_properties.find({
         "dataset_name": dataset.name
@@ -165,7 +163,6 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
         if facet_obj.type == FacetType.RANGE:
             return es_index.get_min_max([facet.name])
         if facet_obj.type == FacetType.TREE:
-            # background_tasks.add_task(construct_tree, facet.name, dataset, db, es_index)
             return es_index.get_tree(facet_obj, filter_options)
         return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options)
     except UnknownFacetsException as e:
