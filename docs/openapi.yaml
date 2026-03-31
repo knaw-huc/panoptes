@@ -135,6 +135,10 @@ paths:
                 filter:
                   description: String to filter results on. For searching in the list of facet options.
                   type: string
+                query:
+                  description: Text query used for filtering search results (not facet options). Used to make sure the counts reflect the actual search results.
+                  type: string
+                  required: false
                 sort:
                   type: string
                   enum:

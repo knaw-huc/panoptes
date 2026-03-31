@@ -133,6 +133,7 @@ class FacetRequestBody(BaseModel):
     """
     Request body for retrieving facet options.
     """
+    name: str
     amount: int
     filter: str
     facets: Dict[str, List[str]]

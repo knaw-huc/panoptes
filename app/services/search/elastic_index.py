@@ -3,14 +3,51 @@ elastic_index.py
 This includes class Index for dealing with Elasticsearch.
 Contains methods for finding articles.
 """
+import datetime
 import math
 from typing import List, Dict
+import re
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
 from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
+
+def parse_interval(interval_str):
+    """
+    Elasticsearch returns date intervals in a very annoying way. They return a single string like
+    "5y" for five years, "10m" for ten minutes or "6M" for six months. This function deals with that
+    in order to get a more usable relativedelta.
+    Supports: s (seconds), m (minutes), h (hours), d (days),
+              M (months), y (years)
+    """
+    # Regex to extract the numeric value and the unit character
+    match = re.match(r"(\d+)\s*([a-zA-Z]+)", interval_str.strip())
+    if not match:
+        raise ValueError(f"Invalid format: {interval_str}")
+
+    value = int(match.group(1))
+    unit = match.group(2)
+
+    # Map unit characters to relativedelta keyword arguments
+    unit_mapping = {
+        's': 'seconds',
+        'm': 'minutes',
+        'h': 'hours',
+        'd': 'days',
+        'M': 'months',
+        'y': 'years'
+    }
+
+    if unit not in unit_mapping:
+        raise ValueError(f"Unsupported unit: {unit}. Use s, m, h, d, M, or y.")
+
+    # Create the relativedelta object
+    kwargs = {unit_mapping[unit]: value}
+    return relativedelta(**kwargs)
 
 
 class Index:
@@ -69,9 +106,9 @@ class Index:
         if filter_options.query != '':
             must_collection.append(
                 {
-                    "multi_match": {
+                    "simple_query_string": {
                         "query": filter_options.query,
-                        "fields": ["*"]
+                        "fields": ["*"],
                     }
                 }
             )
@@ -134,8 +171,29 @@ class Index:
                 }
             }
         response = self.client.search(index=self.index_name, body=body)
-        response_data = [{"value": hits[val_key], "count": hits["doc_count"]}
-                         for hits in response["aggregations"]["names"]["buckets"]]
+        if facet.type == FacetType.DATE:
+            # We need to make the labels more clear by adding the 'to' end of the bucket
+            interval = response["aggregations"]["names"]["interval"]
+
+            response_data = [{"value": hits[val_key],
+                              "start": hits[val_key],
+                              "end": (datetime.strptime(hits[val_key], "%Y-%m-%d").date()
+                                     + parse_interval(interval) - relativedelta(seconds=1))
+                              .strftime("%Y-%m-%d"),
+                              "count": hits["doc_count"],
+                              }
+                             for hits in response["aggregations"]["names"]["buckets"]]
+        elif facet.type == FacetType.HISTOGRAM:
+            interval = facet.interval
+            response_data = [{"value": hits[val_key],
+                              "start": hits[val_key],
+                              "end": hits[val_key] + interval,
+                              "count": hits["doc_count"],
+                              }
+                             for hits in response["aggregations"]["names"]["buckets"]]
+        else:
+            response_data = [{"value": hits[val_key], "count": hits["doc_count"]}
+                             for hits in response["aggregations"]["names"]["buckets"]]
 
 
         return response_data
