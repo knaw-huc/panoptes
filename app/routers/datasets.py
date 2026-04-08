@@ -41,8 +41,9 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
     """
     cursor = db['datasets'].find({})
     datasets = await cursor.to_list()
-    return [DatasetSummary(name=d['name'], data_type=d['data_type'], data_configuration=d['data_configuration']) for d in datasets]
-
+    return [DatasetSummary(name=d['name'],
+                           data_type=d['data_type'],
+                           data_configuration=d['data_configuration']) for d in datasets]
 
 class BrowseRequestBody(BaseModel):
     """
