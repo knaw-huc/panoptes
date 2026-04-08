@@ -19,6 +19,30 @@ router = APIRouter(
     tags=["datasets"]
 )
 
+datasets_router = APIRouter(
+    prefix="/api/datasets",
+    tags=["datasets"]
+)
+
+
+class DatasetSummary(BaseModel):
+    """
+    Public summary of a dataset (excludes sensitive configuration).
+    """
+    name: str
+    data_type: str
+    data_configuration: object
+
+
+@datasets_router.get("")
+async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
+    """
+    Get all available datasets for this tenant.
+    """
+    cursor = db['datasets'].find({})
+    datasets = await cursor.to_list()
+    return [DatasetSummary(name=d['name'], data_type=d['data_type'], data_configuration=d['data_configuration']) for d in datasets]
+
 
 class BrowseRequestBody(BaseModel):
     """
