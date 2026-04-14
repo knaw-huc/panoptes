@@ -11,6 +11,22 @@ tags:
   - name: Facets
     description: Endpoints for interacting with facets
 paths:
+  /datasets:
+    get:
+      summary: Get available data sets
+      description: Get the available data sets.
+      tags:
+        - Datasets
+      responses:
+        200:
+          description: Available data sets results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DataSet"
+
   /datasets/{dataset_name}/search:
     post:
       summary: Search dataset
@@ -225,3 +241,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FacetResult"
+    DataSet:
+      type: object
+      properties:
+        name:
+          type: string
+        data_type:
+          type: string
+        data_configuration:
+          type: object
+          properties:
+            id_property:
+              type: string
+            base_url:
+              type: string
+            home_url:
+              type: string
