@@ -2,6 +2,7 @@
 Data models for use with the database.
 """
 from abc import ABC
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Annotated, Dict
 
@@ -21,6 +22,23 @@ class Tenant(BaseModel):
     domain: str
 
 
+@dataclass
+class DataConfiguration:
+    """
+    Configuration for the dataset connector
+    """
+    id_property: str
+    base_url: str
+    auth: Optional[Dict[str, str]] = None
+
+    def use_auth(self) -> bool:
+        """
+        Whether or not to use an auth token
+        :return:
+        """
+        return self.auth is not None
+
+
 class Dataset(BaseModel):
     """
     Represents a dataset belonging to a tenant
@@ -30,8 +48,15 @@ class Dataset(BaseModel):
     name: str
     es_index: str
     data_type: str
-    data_configuration: Dict[str, str]
+    data_configuration: Dict[str, str | Dict]
     detail_id: str # Field that determines the ID of an item
+
+    def get_config(self) -> DataConfiguration:
+        """
+        Get the data configuration for the dataset.
+        :return:
+        """
+        return DataConfiguration(**self.data_configuration)
 
 
 class FacetType(Enum):

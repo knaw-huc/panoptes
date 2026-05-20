@@ -135,10 +135,11 @@ class Index:
         elif facet.type == FacetType.DATE:
             agg_settings = {
                 "field": facet.property,
-                "buckets": 50,
+                # "buckets": 50,
+                "calendar_interval": "1y",
                 "format": "yyyy-MM-dd"
             }
-            agg_type = 'auto_date_histogram'
+            agg_type = 'date_histogram'
             val_key = "key_as_string"
         else:
             agg_settings = {
@@ -173,12 +174,12 @@ class Index:
         response = self.client.search(index=self.index_name, body=body)
         if facet.type == FacetType.DATE:
             # We need to make the labels more clear by adding the 'to' end of the bucket
-            interval = response["aggregations"]["names"]["interval"]
+            # interval = response["aggregations"]["names"]["interval"]
 
             response_data = [{"value": hits[val_key],
                               "start": hits[val_key],
                               "end": (datetime.strptime(hits[val_key], "%Y-%m-%d").date()
-                                     + parse_interval(interval) - relativedelta(seconds=1))
+                                     + parse_interval("1y") - relativedelta(seconds=1))
                               .strftime("%Y-%m-%d"),
                               "count": hits["doc_count"],
                               }

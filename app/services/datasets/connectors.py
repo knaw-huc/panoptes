@@ -1,7 +1,7 @@
 """
 Implementation specific classes for dealing with dataset connections.
 """
-
+import base64
 from abc import ABC, abstractmethod
 from typing import Annotated
 
@@ -9,7 +9,7 @@ import requests
 from fastapi import HTTPException, Depends
 
 from app.dependencies import DatasetDep, ElasticIndexDep
-from app.models import Dataset
+from app.models import Dataset, DataConfiguration
 from app.services.search.elastic_index import Index
 
 
@@ -42,11 +42,13 @@ class CMDIEditorConnector(DatasetConnector):
     id_property: str
     dataset: Dataset
     es_index: Index
+    data_configuration: DataConfiguration
 
     def __init__(self, dataset: Dataset, es_index: Index) -> None:
         self.dataset = dataset
-        self.api_base = dataset.data_configuration["base_url"]
-        self.id_property = dataset.data_configuration["id_property"]
+        self.data_configuration = dataset.get_config()
+        self.api_base = self.data_configuration.base_url
+        self.id_property = self.data_configuration.id_property
         self.es_index = es_index
 
 
@@ -55,15 +57,24 @@ class CMDIEditorConnector(DatasetConnector):
         item_id = item.get_prop(self.id_property)
 
         try:
-            request = requests.get(f"{self.api_base}/{item_id}", headers={
-                "Accept": "application/json"
-            }, timeout=5)
+            headers = {
+                "Accept": "application/json",
+            }
+            if self.data_configuration.use_auth():
+                # For now, auth is always http basic auth
+                username = self.data_configuration.auth["username"]
+                password = self.data_configuration.auth["password"]
+                token = base64.b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
+                headers["Authorization"] = f"Basic {token}"
+            print("Getting " + f"{self.api_base}/{item_id}")
+            response = requests.get(f"{self.api_base}/{item_id}.json2", headers=headers, timeout=5)
         except requests.exceptions.Timeout as exc:
             raise HTTPException(status_code=504, detail="External source timed out.") from exc
-        if request.status_code >= 400:
-            print(request)
+        if response.status_code >= 400:
+            print(response)
+            print(response.json())
             raise HTTPException(status_code=502, detail="Unable to get data from external source")
-        return request.json()
+        return response.json()
 
 
 class ElasticsearchConnector(DatasetConnector):
