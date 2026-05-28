@@ -106,7 +106,8 @@ class FacetResponse(Facet):
         data = {
             "property": self.property,
             "name": self.name,
-            "type": self.type
+            "type": self.type,
+            "startOpen": self.start_open,
         }
         if self.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
             data['min'] = self.min
