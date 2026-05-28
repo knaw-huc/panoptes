@@ -83,6 +83,7 @@ class Facet(BaseModel):
     order: int = 0
     interval: int | str | None = None
     tree_separator: Optional[str] = '|'
+    start_open: bool = False
 
 
 class BaseProperty(ABC):

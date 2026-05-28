@@ -209,6 +209,9 @@ components:
         type:
           type: string
           enum: ['text']
+        startOpen:
+          description: Whether this facet should be expanded initially
+          type: bool
     RangeFacet:
       type: object
       properties:
