@@ -46,7 +46,8 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
             name=d['name'],
             data_type=d['data_type'],
             data_configuration={
-                k: v for k, v in d['data_configuration'].items() if k not in {'s3_key_id', 's3_secret'}
+                k: v for k, v in d['data_configuration'].items()
+                if k not in {'s3_key_id', 's3_secret', 's3_endpoint'}
             }
         )
         for d in datasets
