@@ -1,6 +1,7 @@
 """
 API endpoints for dealing with a dataset.
 """
+from enum import Enum
 from typing import Dict, List, Optional
 
 import boto3
@@ -13,6 +14,14 @@ from app.models import Facet, DetailProperty, ResultProperty, FacetType
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 from app.tasks.tree_facets import construct_tree
+
+from urllib.parse import urlparse
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)-5s %(name)s - %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/datasets/{dataset_name}",
@@ -54,6 +63,50 @@ class BrowseRequestBody(BaseModel):
     facets: Dict[str, list]
     query: str = ""
 
+class ResolveRequestBody(BaseModel):
+    resource: str
+
+@router.post("/resolve")
+async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
+    """
+    Resolve a ref for an external resource.
+
+    Currently, this only supports S3 buckets, and for those the function creates a signed url the client
+    can use to retrieve the resource.
+
+    If no clientId / secret or config is present, or no resource URL, we return None.
+
+    :return: object containing resolved resource details (currently an URL)
+    """
+    config = dataset.data_configuration
+    required = [request.resource, config]
+    if config:
+        required += [config.get('s3_key_id'), config.get('s3_secret'), config.get('s3_endpoint')]
+    if not all(required) or not request.resource.lower().startswith("s3://"):
+        return {"url": None}
+
+    logger.info(f"Resolving resource: '{request.resource}' for dataset: '{dataset.name}'")
+
+    parsed = urlparse(request.resource)
+    bucket = parsed.netloc
+    path = parsed.path.lstrip('/')
+    logger.info(f"Resolved bucket: '{bucket}', path: '{path}'")
+
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=config['s3_key_id'],
+        aws_secret_access_key=config['s3_secret'],
+        endpoint_url=config['s3_endpoint']
+    )
+    url = s3.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={'Bucket': bucket, 'Key': path},
+        ExpiresIn=3600
+    )
+    logger.info("Created signed url: %s", url)
+    return {
+        "url": url
+    }
 
 @router.post("/search")
 async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
