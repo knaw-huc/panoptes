@@ -1,8 +1,9 @@
 """
 API endpoints for dealing with a dataset.
 """
-from enum import Enum
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
+import logging
 
 import boto3
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
@@ -14,9 +15,6 @@ from app.models import Facet, DetailProperty, ResultProperty, FacetType
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 from app.tasks.tree_facets import construct_tree
-
-from urllib.parse import urlparse
-import logging
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)-5s %(name)s - %(message)s",
@@ -64,6 +62,9 @@ class BrowseRequestBody(BaseModel):
     query: str = ""
 
 class ResolveRequestBody(BaseModel):
+    """
+    Resolved resource details.
+    """
     resource: str
 
 @router.post("/resolve")
@@ -71,10 +72,12 @@ async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
     """
     Resolve a ref for an external resource.
 
-    Currently, this only supports S3 buckets, and for those the function creates a signed url the client
-    can use to retrieve the resource.
+    Currently, this only supports S3 buckets, and for those the
+    function creates a signed url the client can use to retrieve
+    the resource.
 
-    If no clientId / secret or config is present, or no resource URL, we return None.
+    If no clientId / secret or config is present, or no resource
+    URL, we return None.
 
     :return: object containing resolved resource details (currently an URL)
     """
@@ -85,12 +88,12 @@ async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
     if not all(required) or not request.resource.lower().startswith("s3://"):
         return {"url": None}
 
-    logger.info(f"Resolving resource: '{request.resource}' for dataset: '{dataset.name}'")
+    logger.info("Resolving resource: '%s' for dataset: '%s'", request.resource, dataset.name)
 
     parsed = urlparse(request.resource)
     bucket = parsed.netloc
     path = parsed.path.lstrip('/')
-    logger.info(f"Resolved bucket: '{bucket}', path: '{path}'")
+    logger.info("Resolved bucket: %s, path: %s", bucket, path)
 
     s3 = boto3.client(
         "s3",
