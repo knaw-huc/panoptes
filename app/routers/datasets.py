@@ -76,17 +76,18 @@ async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
     function creates a signed url the client can use to retrieve
     the resource.
 
-    If no clientId / secret or config is present, or no resource
-    URL, we return None.
+    If credentials config is missing, this function raises a 500 error.
+    If the input is invalid, this function raises a 400 error.
 
     :return: object containing resolved resource details (currently an URL)
     """
     config = dataset.data_configuration
-    required = [request.resource, config]
-    if config:
-        required += [config.get('s3_key_id'), config.get('s3_secret'), config.get('s3_endpoint')]
-    if not all(required) or not request.resource.lower().startswith("s3://"):
-        return {"url": None}
+
+    if not all([config.get('s3_key_id'), config.get('s3_secret'), config.get('s3_endpoint')]):
+        raise HTTPException(status_code=500, detail={"error": "Missing configuration"})
+
+    if request.resource is None or not request.resource.lower().startswith("s3://"):
+        raise HTTPException(status_code=400, detail={"error": "Invalid parameters"})
 
     logger.info("Resolving resource: '%s' for dataset: '%s'", request.resource, dataset.name)
 
