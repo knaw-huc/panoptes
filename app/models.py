@@ -49,6 +49,7 @@ class Dataset(BaseModel):
     es_index: str
     data_type: str
     data_configuration: Dict[str, str | Dict]
+    metadata: Dict[str, str | Dict]
     detail_id: str # Field that determines the ID of an item
 
     def get_config(self) -> DataConfiguration:

@@ -39,6 +39,7 @@ class DatasetSummary(BaseModel):
     name: str
     data_type: str
     data_configuration: object
+    metadata: object
 
 
 @datasets_router.get("")
@@ -52,6 +53,7 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
         DatasetSummary(
             name=d['name'],
             data_type=d['data_type'],
+            metadata=d.get('metadata', {}),
             data_configuration={
                 k: v for k, v in d['data_configuration'].items()
                 if k not in {'s3_key_id', 's3_secret', 's3_endpoint'}
