@@ -2,6 +2,8 @@
 API endpoints for dealing with a dataset.
 """
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
+import logging
 
 import boto3
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
@@ -13,6 +15,11 @@ from app.models import Facet, DetailProperty, ResultProperty, FacetType
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 from app.tasks.tree_facets import construct_tree
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)-5s %(name)s - %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/datasets/{dataset_name}",
@@ -42,10 +49,18 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
     """
     cursor = db['datasets'].find({})
     datasets = await cursor.to_list()
-    return [DatasetSummary(name=d['name'],
-                           data_type=d['data_type'],
-                           metadata=d.get('metadata', {}),
-                           data_configuration=d['data_configuration']) for d in datasets]
+    return [
+        DatasetSummary(
+            name=d['name'],
+            data_type=d['data_type'],
+            metadata=d.get('metadata', {}),
+            data_configuration={
+                k: v for k, v in d['data_configuration'].items()
+                if k not in {'s3_key_id', 's3_secret', 's3_endpoint'}
+            }
+        )
+        for d in datasets
+    ]
 
 class BrowseRequestBody(BaseModel):
     """
@@ -56,6 +71,56 @@ class BrowseRequestBody(BaseModel):
     facets: Dict[str, list]
     query: str = ""
 
+class ResolveRequestBody(BaseModel):
+    """
+    Resolved resource details.
+    """
+    resource: str
+
+@router.post("/resolve")
+async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
+    """
+    Resolve a ref for an external resource.
+
+    Currently, this only supports S3 buckets, and for those the
+    function creates a signed url the client can use to retrieve
+    the resource.
+
+    If credentials config is missing, this function raises a 500 error.
+    If the input is invalid, this function raises a 400 error.
+
+    :return: object containing resolved resource details (currently an URL)
+    """
+    config = dataset.data_configuration
+
+    if not all([config.get('s3_key_id'), config.get('s3_secret'), config.get('s3_endpoint')]):
+        raise HTTPException(status_code=500, detail={"error": "Missing configuration"})
+
+    if request.resource is None or not request.resource.lower().startswith("s3://"):
+        raise HTTPException(status_code=400, detail={"error": "Invalid parameters"})
+
+    logger.info("Resolving resource: '%s' for dataset: '%s'", request.resource, dataset.name)
+
+    parsed = urlparse(request.resource)
+    bucket = parsed.netloc
+    path = parsed.path.lstrip('/')
+    logger.info("Resolved bucket: %s, path: %s", bucket, path)
+
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=config['s3_key_id'],
+        aws_secret_access_key=config['s3_secret'],
+        endpoint_url=config['s3_endpoint']
+    )
+    url = s3.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={'Bucket': bucket, 'Key': path},
+        ExpiresIn=3600
+    )
+    logger.info("Created signed url: %s", url)
+    return {
+        "url": url
+    }
 
 @router.post("/search")
 async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
