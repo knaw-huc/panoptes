@@ -32,6 +32,7 @@ class DatasetSummary(BaseModel):
     name: str
     data_type: str
     data_configuration: object
+    metadata: object
 
 
 @datasets_router.get("")
@@ -43,6 +44,7 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
     datasets = await cursor.to_list()
     return [DatasetSummary(name=d['name'],
                            data_type=d['data_type'],
+                           metadata=d.get('metadata', {}),
                            data_configuration=d['data_configuration']) for d in datasets]
 
 class BrowseRequestBody(BaseModel):
