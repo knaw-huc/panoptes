@@ -28,7 +28,7 @@ The API is made using FastAPI, dataset configuration is done in a Mongo database
 ### Installation
 
 This software is not released yet. Container images will be available here on GitHub. In order to use the latest version, you can build the container
-image yourself. There is a Docker Bake configuration file. In order to set the name of the image, crate your own `docker-bake.override.hcl` file to set two variables:
+image yourself. There is a Docker Bake configuration file. In order to set the name of the image, create your own `docker-bake.override.hcl` file to set two variables:
 
 ```hcl
 IMAGE = "some-registry.com/your-image-name"
