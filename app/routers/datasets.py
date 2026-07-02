@@ -4,6 +4,7 @@ API endpoints for dealing with a dataset.
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 import logging
+import math
 
 import boto3
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status
@@ -158,8 +159,8 @@ class FacetResponse(Facet):
     A facet in a response. Added some additional fields compared to the Facet model so the min/max
     values can also be returned.
     """
-    min: Optional[int] = None
-    max: Optional[int] = None
+    start: Optional[int] = None
+    end: Optional[int] = None
     step: Optional[int] = None
     tree: Optional[dict] = None
     order: int = 0
@@ -177,8 +178,8 @@ class FacetResponse(Facet):
             "startOpen": self.start_open,
         }
         if self.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
-            data['min'] = self.min
-            data['max'] = self.max
+            data['start'] = self.start
+            data['end'] = self.end
             data['step'] = self.step
         if self.type == FacetType.TREE:
             data['tree'] = self.tree
@@ -212,8 +213,8 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
 
         for prop, data in mins_maxes.items():
             facet = facets[prop]
-            facet_responses[prop].min = data['min']
-            facet_responses[prop].max = data['max']
+            facet_responses[prop].start = data['min']
+            facet_responses[prop].end = data['max']
             facet_responses[prop].step = 1
 
     response = list(facet_responses.values())
@@ -255,10 +256,20 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
     filter_options = FilterOptions(facets=facet.facets, query=facet.query)
     try:
         if facet_obj.type == FacetType.RANGE:
-            return es_index.get_min_max([facet.name])
+            min_max = es_index.get_min_max([facet.name])
+            entry = min_max.get(name) or {
+                "min": facet_data.get("min", -math.inf),
+                "max": facet_data.get("max", math.inf)
+            }
+            return [{
+                "start": entry["min"],
+                "end": entry["max"],
+                "step": facet_data.get("step", 1)
+            }]
         if facet_obj.type == FacetType.TREE:
             return es_index.get_tree(facet_obj, filter_options)
-        return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options)
+        return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options,
+                                  facet.sort)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
             "error": "unknown_facets",

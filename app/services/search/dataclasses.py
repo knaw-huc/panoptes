@@ -5,6 +5,7 @@ Data classes for dealing with the search services.
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+from enum import StrEnum
 
 import jsonpath
 
@@ -91,3 +92,12 @@ class SearchResult:
         Processes the ES results into dicts with only the required properties.
         """
         return [item.format_result(properties) for item in self.items]
+
+@dataclass
+class Sort(StrEnum):
+    """
+    Sorting specifier
+    """
+    ASC = 'asc'
+    DESC = 'desc'
+    HITS = 'hits'
