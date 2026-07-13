@@ -14,7 +14,8 @@ from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
-from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem
+from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, Sort
+
 
 def parse_interval(interval_str):
     """
@@ -114,11 +115,14 @@ class Index:
             )
         return must_collection
 
-    def get_facet(self, facet: Facet, amount: int, facet_filter: str,
-                  filter_options: FilterOptions):
+    # 5 args as max is a bit conservative - we can gather args into objects,
+    # but sorting options appear a valid separate arg to me...
+    def get_facet(self, facet: Facet, amount: int, facet_filter: str, # pylint: disable=too-many-arguments,too-many-positional-arguments
+                  filter_options: FilterOptions, sort: str = "hits"):
         """
         Get the available options for a specific facet, based on a search query. This is used for
         showing the options still relevant given the current search query.
+        :param sort:
         :param facet:
         :param amount:
         :param facet_filter:
@@ -142,12 +146,15 @@ class Index:
             agg_type = 'date_histogram'
             val_key = "key_as_string"
         else:
+            order = {
+                str(Sort.ASC): { "_key": str(Sort.ASC) },
+                str(Sort.DESC): { "_key": str(Sort.DESC) },
+                str(Sort.HITS): { "_count": str(Sort.DESC) },
+            }.get(sort, { "_count": str(Sort.DESC) })
             agg_settings = {
                 "field": facet.property,
                 "size": amount,
-                "order": {
-                    "_count": "desc"
-                }
+                "order": order
             }
             agg_type = 'terms'
 
