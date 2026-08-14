@@ -9,11 +9,12 @@ from typing import List, Dict
 import re
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from collections import defaultdict
 
 from elasticsearch import Elasticsearch
 
 from app.exceptions.search import UnknownFacetsException
-from app.models import Facet, FacetType
+from app.models import Facet, FacetType, ChildIndex
 from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, Sort
 
 
@@ -58,10 +59,13 @@ class Index:
     client: Elasticsearch
     index_name: str
     facet_configuration: Dict[str, Facet]
+    child_index: ChildIndex | None
 
-    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet]):
+    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet],
+                 child_index: ChildIndex | None = None):
         self.client = client
         self.index_name = index_name
+        self.child_index = child_index
         self.facet_configuration = {
             facet.property: facet
             for facet in available_facets
@@ -81,15 +85,27 @@ class Index:
                 ret_str = ret_str + "[" + char.upper() + char.lower() + "]"
         return ret_str + ".*"
 
-    def make_matches(self, filter_options: FilterOptions) -> List:
+    @staticmethod
+    def make_query_match(query: str):
+        if query.strip() == '':
+            return None
+
+        return {
+            "simple_query_string": {
+                "query": query.strip(),
+                "fields": ["*"],
+            }
+        }
+
+    def make_matches(self, facets: Dict[str, List[str]]) -> List:
         """
         Create match queries.
-        :param filter_options:
+        :param facets:
         :return:
         """
         must_collection = []
         unknown_facets = []
-        for key, values in filter_options.facets.items():
+        for key, values in facets.items():
             if key not in self.facet_configuration:
                 unknown_facets.append(key)
                 continue
@@ -104,15 +120,6 @@ class Index:
                 must_collection.append({"terms": {key: values}})
         if unknown_facets:
             raise UnknownFacetsException("Unknown facets", unknown_facets)
-        if filter_options.query != '':
-            must_collection.append(
-                {
-                    "simple_query_string": {
-                        "query": filter_options.query,
-                        "fields": ["*"],
-                    }
-                }
-            )
         return must_collection
 
     # 5 args as max is a bit conservative - we can gather args into objects,
@@ -173,9 +180,15 @@ class Index:
 
         if filter_options.not_empty():
             filter_options.remove_facet(facet.property)
+
+            matches = self.make_matches(filter_options.facets)
+            query = self.make_query_match(filter_options.query)
+            if query:
+                matches.append(query)
+
             body["query"] = {
                 "bool": {
-                    "must": self.make_matches(filter_options)
+                    "must": matches
                 }
             }
         response = self.client.search(index=self.index_name, body=body)
@@ -339,9 +352,14 @@ class Index:
         :return:
         """
         if filter_options.not_empty():
+            matches = self.make_matches(filter_options.facets)
+            query_match = self.make_query_match(filter_options.query)
+            if query_match:
+                matches.append(query_match)
+
             query = {
                 "bool": {
-                    "must": self.make_matches(filter_options)
+                    "must": matches
                 }
             }
         else:
@@ -364,17 +382,61 @@ class Index:
             "from": offset,
         })
 
+        result_items = [
+            ResultItem(
+                es_result=item["_source"],
+                highlight=item.get("highlight", {}),
+                index=item["_id"]
+            ) for item in response["hits"]["hits"]
+        ]
+
+        if self.child_index is not None:
+            self._add_child_results(result_items, filter_options.query)
+
         return SearchResult(
             total_results=response['hits']['total']['value'],
             pages=math.ceil(response["hits"]["total"]["value"] / limit),
-            items=[
-                ResultItem(
-                    es_result=item["_source"],
-                    highlight=item.get("highlight", {}),
-                    index=item["_id"]
-                ) for item in response["hits"]["hits"]
-            ]
+            items=result_items,
         )
+
+    def _add_child_results(self, result_items: List[ResultItem], query: str):
+        if self.child_index is None:
+            return
+
+        item_identifiers = {result_item.es_result[self.child_index.parent_id] for result_item in result_items}
+
+        matches = [{"terms": {self.child_index.child_id: list(item_identifiers)}}]
+        query_match = self.make_query_match(query)
+        if query_match:
+            matches.append(query_match)
+
+        response = self.client.search(index=self.child_index.es_index, body={
+            "query": {
+                "bool": {
+                    "must": matches
+                }
+            },
+            "highlight": {
+                "number_of_fragments": 1,
+                "fields": {
+                    "*": {}
+                }
+            },
+            "sort": [
+                {"_score": {"order": "desc"}},
+            ],
+        })
+
+        join_table = defaultdict(list)
+        for child_result in response["hits"]["hits"]:
+            join_table[child_result["_source"][self.child_index.child_id]].append(ResultItem(
+                es_result=child_result["_source"],
+                highlight=child_result.get("highlight", {}),
+                index=child_result["_id"]
+            ))
+
+        for result_item in result_items:
+            result_item.es_result['children'] = join_table[result_item.es_result[self.child_index.parent_id]]
 
     def by_identifier(self, identifier: str, field: str) -> ResultItem:
         """

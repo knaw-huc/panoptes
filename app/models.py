@@ -51,6 +51,7 @@ class Dataset(BaseModel):
     data_configuration: Dict[str, str | Dict]
     metadata: Dict[str, str | Dict]
     detail_id: str # Field that determines the ID of an item
+    child_index: Optional[ChildIndex] = None
 
     def get_config(self) -> DataConfiguration:
         """
@@ -58,6 +59,15 @@ class Dataset(BaseModel):
         :return:
         """
         return DataConfiguration(**self.data_configuration)
+
+
+class ChildIndex(BaseModel):
+    """
+    Configuration for a child index used in a two-phase search
+    """
+    es_index: str
+    parent_id: str
+    child_id: str
 
 
 class FacetType(Enum):

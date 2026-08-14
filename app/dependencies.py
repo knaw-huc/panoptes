@@ -136,6 +136,7 @@ async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     facets_raw = await cursor.to_list()
 
     facets = [Facet(**facet) for facet in facets_raw]
-    return Index(database_connections["elastic"], dataset.es_index, facets)
+    return Index(database_connections["elastic"], dataset.es_index, facets,
+                 dataset.child_index.es_index if dataset.child_index is not None else None)
 
 ElasticIndexDep = Annotated[Index, Depends(get_es_index)]
