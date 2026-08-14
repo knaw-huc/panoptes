@@ -5,7 +5,7 @@ Contains methods for finding articles.
 """
 import datetime
 import math
-from typing import List, Dict
+from typing import List, Dict, Optional
 import re
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -58,14 +58,16 @@ class Index:
     client: Elasticsearch
     index_name: str
     facet_configuration: Dict[str, Facet]
+    highlight_fields: Optional[List[str]] = None
 
-    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet]):
+    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet], highlight_fields: Optional[list[str]] = None):
         self.client = client
         self.index_name = index_name
         self.facet_configuration = {
             facet.property: facet
             for facet in available_facets
         }
+        self.highlight_fields = highlight_fields
 
     @staticmethod
     def no_case(str_in):
@@ -352,11 +354,12 @@ class Index:
         response = self.client.search(index=self.index_name, body={
             "query": query,
             "highlight": {
-                "number_of_fragments": 1,
-                "fields": {
-                    "*": {}
-                }
-            },
+                "type": "unified",
+                "number_of_fragments": 0,
+                "pre_tags": [u"\uE000"],  # Use characters from Private Use Areas (PUA)
+                "post_tags": [u"\uE001"],
+                "fields": {field: {} for field in self.highlight_fields}
+            } if self.highlight_fields is not None else None,
             "sort": [
                 {"_score": {"order": "desc"}},
             ],

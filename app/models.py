@@ -51,6 +51,7 @@ class Dataset(BaseModel):
     data_configuration: Dict[str, str | Dict]
     metadata: Dict[str, str | Dict]
     detail_id: str # Field that determines the ID of an item
+    highlight_fields: Optional[list[str]] = None
 
     def get_config(self) -> DataConfiguration:
         """

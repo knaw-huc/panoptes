@@ -21,15 +21,6 @@ class ResultItem:
     index: str
     highlight: Optional[Dict] = None
 
-
-    def format_highlight(self) -> str:
-        """
-        Format the highlight into a single string
-        :return:
-        """
-        return "<br />".join(["<br />".join(items) for items in self.highlight.values()])
-
-
     def format_result(self, properties: List[BaseProperty]) -> Dict:
         """
         Formats a single result into a dict with only the required fields.
@@ -39,7 +30,7 @@ class ResultItem:
         tmp_result = {
             **self.es_result,
             '_id': self.index,
-            '_highlight': self.format_highlight(),
+            '_highlight': self.highlight,
         }
         return {
             prop.name: jsonpath.findall(prop.path, tmp_result)[0] for prop in properties
