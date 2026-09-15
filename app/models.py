@@ -84,6 +84,7 @@ class Facet(BaseModel):
     order: int = 0
     interval: int | str | None = None
     tree_separator: Optional[str] = '|'
+    tree_expand_level: Optional[int] = None
     start_open: bool = False
 
 

@@ -164,6 +164,8 @@ class FacetResponse(Facet):
     step: Optional[int] = None
     tree: Optional[dict] = None
     order: int = 0
+    start_open : bool = False
+    tree_expand_level: Optional[int] = None
 
     @model_serializer
     def serialize(self):
@@ -183,6 +185,7 @@ class FacetResponse(Facet):
             data['step'] = self.step
         if self.type == FacetType.TREE:
             data['tree'] = self.tree
+            data['expand_level'] = self.tree_expand_level
         return data
 
 
