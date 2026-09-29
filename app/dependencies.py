@@ -94,6 +94,18 @@ async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] =
 
 TenantDep = Annotated[Tenant, Depends(get_tenant)]
 
+async def admin_domain(settings: SettingsDep, host: Annotated[str | None, Header()] = None) -> bool:
+    """
+    Check if the request is sent to the admin domain
+    :param settings:
+    :param host:
+    :return:
+    """
+    domain = host.split(":")[0]
+    if domain != settings.admin_domain:
+        raise HTTPException(status_code=404, detail="Domain name not known")
+    return True
+
 
 def get_tenant_db(tenant: TenantDep) -> AsyncIOMotorDatabase:
     """

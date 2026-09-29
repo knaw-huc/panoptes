@@ -1,12 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.dependencies import MainDbDep
+from app.dependencies import MainDbDep, admin_domain
 from app.models import Tenant
 from app.models import FacetType
 
 router = APIRouter(
     prefix="/api/admin",
-    tags=["admin"]
+    tags=["admin"],
+    dependencies=[Depends(admin_domain)],
 )
 
 @router.get("/tenants")
