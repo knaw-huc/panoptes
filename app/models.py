@@ -1,6 +1,8 @@
 """
 Data models for use with the database.
 """
+from uuid import UUID
+
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
@@ -15,11 +17,29 @@ PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class Tenant(BaseModel):
     """
-    Represents an tenant.
+    Represents a tenant.
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str
     domain: str
+
+
+class User(BaseModel):
+    """
+    Represents a user
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    username: str
+    password_hash: str
+
+
+class RefreshToken(BaseModel):
+    """
+    Represents a refresh token
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    uuid: str
+    username: str
 
 
 @dataclass

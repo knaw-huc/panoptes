@@ -11,6 +11,7 @@ from app.dependencies import (startup_es_client, shutdown_es_client, startup_db_
                               shutdown_db_client)
 from .routers.datasets import router as datasets_router, datasets_router as datasets_list_router
 from .routers.admin import router as admin_router
+from app.routers.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -39,6 +40,8 @@ def health_check():
 app.include_router(datasets_list_router)
 app.include_router(datasets_router)
 app.include_router(admin_router)
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
