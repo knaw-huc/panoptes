@@ -134,6 +134,16 @@ async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
 DatasetDep = Annotated[Dataset, Depends(get_dataset)]
 
 
+async def get_elasticsearch() -> Elasticsearch:
+    """
+    Get the Elasticsearch connection.
+    :return:
+    """
+    return database_connections["elastic"]
+
+ElasticsearchDep = Annotated[Elasticsearch, Depends(get_elasticsearch)]
+
+
 async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     """
     Get the Elasticsearch index for the current dataset.

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import MainDbDep, admin_domain
+from app.dependencies import MainDbDep, admin_domain, ElasticsearchDep
 from app.models import Tenant
 from app.models import FacetType
 
@@ -20,6 +20,19 @@ async def get_tenants(db: MainDbDep):
     tenant_list = [Tenant(**tenant) for tenant in await tenants.to_list()]
     print(tenant_list)
     return {"tenants": tenant_list}
+
+
+@router.get("/indices")
+async def get_indices(elasticsearch: ElasticsearchDep):
+    """
+    Get all available ES indices in this configuration.
+    :return:
+    """
+    indices = elasticsearch.indices.get_alias(index="*", expand_wildcards="open").keys()
+
+    return {
+        "indices": sorted(list(indices))
+    }
 
 
 @router.get("/facettypes")
