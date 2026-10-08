@@ -226,6 +226,41 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
     return response
 
 
+@router.get("/result-properties")
+async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
+    """
+    Get all result properties
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['result_properties'].find({
+        "dataset_name": dataset.name
+    })
+    result_properties_data = await cursor.to_list()
+
+    return {
+        "result_properties": [ResultProperty(**data) for data in result_properties_data]
+    }
+
+
+@router.get("/detail-properties")
+async def get_detail_properties(db: TenantDbDep, dataset: DatasetDep):
+    """
+    Get all detail properties
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['detail_properties'].find({
+        "dataset_name": dataset.name
+    })
+    detail_properties_data = await cursor.to_list()
+
+    return {
+        "detail_properties": [DetailProperty(**data) for data in detail_properties_data]
+    }
+
 class FacetRequestBody(BaseModel):
     """
     Request body for retrieving facet options.
