@@ -1,8 +1,6 @@
 """
 Data models for use with the database.
 """
-from uuid import UUID
-
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum

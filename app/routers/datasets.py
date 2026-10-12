@@ -226,6 +226,25 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
     return response
 
 
+@router.get("/facets/configuration")
+async def get_facet_configuration(db: TenantDbDep, dataset: DatasetDep):
+    """
+
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['facets'].find({
+        "dataset_name": dataset.name
+    }).sort("order")
+
+    facets_data = await cursor.to_list()
+
+    return {
+        "facets": [Facet(**facet) for facet in facets_data],
+    }
+
+
 @router.get("/result-properties")
 async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
     """

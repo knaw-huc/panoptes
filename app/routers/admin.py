@@ -1,13 +1,18 @@
+"""
+Endpoints for managing the Panoptes system as a whole.
+"""
+
 from fastapi import APIRouter, Depends
 
 from app.dependencies import MainDbDep, admin_domain, ElasticsearchDep
 from app.models import Tenant
 from app.models import FacetType
+from app.services.authentication.authentication import is_admin
 
 router = APIRouter(
     prefix="/api/admin",
     tags=["admin"],
-    dependencies=[Depends(admin_domain)],
+    dependencies=[Depends(admin_domain), Depends(is_admin)],
 )
 
 @router.get("/tenants")

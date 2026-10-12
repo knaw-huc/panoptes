@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.dependencies import (startup_es_client, shutdown_es_client, startup_db_client,
                               shutdown_db_client)
-from .routers.datasets import router as datasets_router, datasets_router as datasets_list_router
-from .routers.admin import router as admin_router
+from app.routers.datasets import router as datasets_router, datasets_router as datasets_list_router
+from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
 
 
