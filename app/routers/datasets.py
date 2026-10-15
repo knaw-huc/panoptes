@@ -7,7 +7,7 @@ import logging
 import math
 
 import boto3
-from fastapi import APIRouter, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Request
 from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
@@ -62,6 +62,23 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
         )
         for d in datasets
     ]
+
+@datasets_router.post("")
+async def post_dataset(dataset: DatasetSummary, db: TenantDbDep, request: Request):
+
+    # body = await request.json()
+    # print('payload from frontend:', body)
+
+    try:
+        db.datasets.insert_one(dataset.model_dump())
+        print(f"added dataset '{dataset.name}' to tenant")
+    except Exception as e:
+        print(f"problem with dataset: {dataset}")
+        print("valisation error details:", str(e))
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+
 
 class BrowseRequestBody(BaseModel):
     """
