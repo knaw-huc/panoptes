@@ -7,12 +7,13 @@ import logging
 import math
 
 import boto3
-from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Request, Depends
 from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, DetailProperty, ResultProperty, FacetType
+from app.services.authentication.authentication import is_admin
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 from app.tasks.tree_facets import construct_tree
@@ -262,7 +263,51 @@ async def get_facet_configuration(db: TenantDbDep, dataset: DatasetDep):
     }
 
 
-@router.get("/result-properties")
+class FacetUpdateRequest(BaseModel):
+    """
+    Request to update all facets
+    """
+    facets: List[Facet]
+
+
+@router.put("/facets/configuration", dependencies=[Depends(is_admin)])
+async def update_facets(db: TenantDbDep, request: FacetUpdateRequest, dataset: DatasetDep):
+    """
+    Update all facets of this dataset.
+    :param dataset:
+    :param request:
+    :param db:
+    :return:
+    """
+    print(request)
+
+    await db.facets.delete_many({"dataset_name": dataset.name})
+
+    tmp = []
+
+    for facet in request.facets:
+        facet.dataset_name = dataset.name
+        tmp.append(facet.model_dump())
+
+    db.facets.insert_many(tmp)
+
+    return request
+
+
+@router.get("/available-properties", dependencies=[Depends(is_admin)])
+async def get_available_properties(es: ElasticIndexDep):
+    """
+    Returns all available properties in the elasticsearch index
+    :param es:
+    :return:
+    """
+    fields = es.get_fields()
+    return {
+        "available_properties": fields
+    }
+
+
+@router.get("/result-properties", dependencies=[Depends(is_admin)])
 async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
     """
     Get all result properties
@@ -280,7 +325,7 @@ async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
     }
 
 
-@router.get("/detail-properties")
+@router.get("/detail-properties", dependencies=[Depends(is_admin)])
 async def get_detail_properties(db: TenantDbDep, dataset: DatasetDep):
     """
     Get all detail properties

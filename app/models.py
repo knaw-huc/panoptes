@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, Annotated, Dict
 
 import jsonpath
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, ConfigDict
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -94,6 +94,8 @@ class Facet(BaseModel):
     """
     Represents an indexed facet
     """
+    model_config = ConfigDict(use_enum_values=True)
+
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     dataset_name: str
     property: str # Name of the field in the ES index
