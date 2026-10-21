@@ -64,6 +64,24 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
         for d in datasets
     ]
 
+@datasets_router.get("/{name}")
+async def get_dataset(db: TenantDbDep, name: str):
+    """
+    Get the information in the mongoDB for a particular dataset.
+    """
+    name = str(name)
+    print(f"....... dataset '{name}' ......")
+    dataset = await db["datasets"].find_one({"name": name})
+
+    if not dataset:
+        raise HTTPException(status_code=404, detail={"error": "Dataset not found"})
+
+    if "_id" in dataset:
+        dataset["_id"] = str(dataset["_id"])
+
+    return dataset
+
+
 @datasets_router.post("")
 async def post_dataset(dataset: DatasetSummary, db: TenantDbDep):
     """
