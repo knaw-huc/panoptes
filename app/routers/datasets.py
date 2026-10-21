@@ -65,11 +65,10 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
     ]
 
 @datasets_router.post("")
-async def post_dataset(dataset: DatasetSummary, db: TenantDbDep, request: Request):
-
-    # body = await request.json()
-    # print('payload from frontend:', body)
-
+async def post_dataset(dataset: DatasetSummary, db: TenantDbDep):
+    """
+    Create a new dataset.
+    """
     try:
         db.datasets.insert_one(dataset.model_dump())
         print(f"added dataset '{dataset.name}' to tenant")
@@ -77,7 +76,6 @@ async def post_dataset(dataset: DatasetSummary, db: TenantDbDep, request: Reques
         print(f"problem with dataset: {dataset}")
         print("valisation error details:", str(e))
         raise HTTPException(status_code=422, detail=str(e))
-
 
 
 
