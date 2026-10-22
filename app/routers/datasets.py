@@ -366,7 +366,8 @@ class ResultPropertyUpdateRequest(BaseModel):
 @router.put("/result-properties", dependencies=[Depends(is_admin)])
 async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRequest, dataset: DatasetDep):
     """
-    Get all result properties
+    Update result properties. Warning: replaces all existing properties with new properties (within
+    dataset)
     :param request:
     :param db:
     :param dataset:
