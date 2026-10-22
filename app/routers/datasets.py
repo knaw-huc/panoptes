@@ -40,6 +40,7 @@ class DatasetSummary(BaseModel):
     """
     name: str
     data_type: str
+    es_index: Optional[str] = None
     data_configuration: object
     metadata: object
 
@@ -94,6 +95,24 @@ async def post_dataset(dataset: DatasetSummary, db: TenantDbDep):
         print(f"problem with dataset: {dataset}")
         print("valisation error details:", str(e))
         raise HTTPException(status_code=422, detail=str(e))
+
+@datasets_router.put("/{name}")
+async def update_dataset(dataset: DatasetSummary, db: TenantDbDep, name: str):
+    """
+    Update a dataset.
+    """
+    # name=str(name)
+    try:
+        result = await db['datasets'].update_one(
+            {"name": name},
+            {"$set": dataset.model_dump()}
+        )
+
+        if result.matched_count == 0:
+            print(f"dataset '{name}' not found")
+
+    except Exception as e:
+        print(f"problem with dataset: {dataset}", str(e))
 
 
 
