@@ -12,7 +12,7 @@ from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
 from app.exceptions.search import UnknownFacetsException
-from app.models import Facet, DetailProperty, ResultProperty, FacetType
+from app.models import Facet, DetailProperty, ResultProperty, FacetType, Dataset
 from app.services.authentication.authentication import is_admin
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
@@ -84,7 +84,7 @@ async def get_dataset(db: TenantDbDep, name: str):
 
 
 @datasets_router.post("")
-async def post_dataset(dataset: DatasetSummary, db: TenantDbDep):
+async def post_dataset(dataset: Dataset, db: TenantDbDep):
     """
     Create a new dataset.
     """
@@ -97,7 +97,7 @@ async def post_dataset(dataset: DatasetSummary, db: TenantDbDep):
         raise HTTPException(status_code=422, detail=str(e))
 
 @datasets_router.put("/{name}")
-async def update_dataset(dataset: DatasetSummary, db: TenantDbDep, name: str):
+async def update_dataset(dataset: Dataset, db: TenantDbDep, name: str):
     """
     Update a dataset.
     """

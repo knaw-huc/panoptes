@@ -62,7 +62,7 @@ class Dataset(BaseModel):
     Represents a dataset belonging to a tenant
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    tenant_name: str
+    tenant_name: Optional[str] = None
     name: str
     es_index: str
     data_type: str
