@@ -113,6 +113,8 @@ class BaseProperty(ABC):
     Base class for property-related fields. Combine with BaseModel to make sure the resulting class
     becomes a model.
     """
+    model_config = ConfigDict(use_enum_values=True)
+
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     dataset_name: str
     name: str

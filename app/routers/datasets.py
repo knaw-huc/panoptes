@@ -314,8 +314,6 @@ async def update_facets(db: TenantDbDep, request: FacetUpdateRequest, dataset: D
     :param db:
     :return:
     """
-    print(request)
-
     await db.facets.delete_many({"dataset_name": dataset.name})
 
     tmp = []
@@ -357,6 +355,36 @@ async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
 
     return {
         "result_properties": [ResultProperty(**data) for data in result_properties_data]
+    }
+
+class ResultPropertyUpdateRequest(BaseModel):
+    """
+    Request to update all facets
+    """
+    facets: List[ResultProperty]
+
+@router.put("/result-properties", dependencies=[Depends(is_admin)])
+async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRequest, dataset: DatasetDep):
+    """
+    Update result properties. Warning: replaces all existing properties with new properties (within
+    dataset)
+    :param request:
+    :param db:
+    :param dataset:
+    :return:
+    """
+    tmp = []
+
+    for facet in request.facets:
+        facet.dataset_name = dataset.name
+        tmp.append(facet.model_dump())
+
+    await db.result_properties.delete_many({"dataset_name": dataset.name})
+
+    db.result_properties.insert_many(tmp)
+
+    return {
+        "result_properties": tmp
     }
 
 
