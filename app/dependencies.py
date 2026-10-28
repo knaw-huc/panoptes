@@ -55,7 +55,7 @@ async def shutdown_db_client(_app) -> None:
     :param _app:
     :return:
     """
-    database_connections["mongo"].close()
+    await database_connections["mongo"].close()
 
 async def shutdown_es_client(_app) -> None:
     """
