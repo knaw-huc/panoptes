@@ -83,6 +83,43 @@ class Index:
                 ret_str = ret_str + "[" + char.upper() + char.lower() + "]"
         return ret_str + ".*"
 
+    @staticmethod
+    def get_fields_recursive(m: dict, fields=None, path: str = "") -> list:
+        """
+        Traverse mapping recursively and return fields
+        """
+        if fields is None:
+            fields = []
+        for k, v in m.items():
+            add = f"{path}.{k}" if path else k
+            if 'properties' in v:
+                fields = Index.get_fields_recursive(v['properties'], fields, path=add)
+            elif 'fields' in v:
+                fields.append(add)
+                fields = Index.get_fields_recursive(v['fields'], fields, path=add)
+            elif 'type' in v and v['type'] != 'object':
+                fields.append(add)
+        return fields
+
+
+    def get_fields(self):
+        """
+        Get all fields available in the index
+        :return:
+        """
+        mapping = self.client.indices.get_mapping(index=self.index_name)
+        print(mapping)
+        tmp = []
+        for value in mapping.values():
+            fields = self.get_fields_recursive(value["mappings"]["properties"])
+            for f in fields:
+                if "/" in f:
+                    tmp.append(f"`{f}`")
+                else:
+                    tmp.append(f)
+        return tmp
+
+
     def make_matches(self, filter_options: FilterOptions) -> List:
         """
         Create match queries.

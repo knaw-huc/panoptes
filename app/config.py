@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     es_username: str | None = None
     es_password: str | None = None
     mongo_connection: str
+    admin_domain: str
+    jwt_secret: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
