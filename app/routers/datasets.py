@@ -7,7 +7,7 @@ import logging
 import math
 
 import boto3
-from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Request, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Depends
 from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
@@ -93,8 +93,8 @@ async def post_dataset(dataset: Dataset, db: TenantDbDep):
         print(f"added dataset '{dataset.name}' to tenant")
     except Exception as e:
         print(f"problem with dataset: {dataset}")
-        print("valisation error details:", str(e))
-        raise HTTPException(status_code=422, detail=str(e))
+        print("validation error details:", str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 @datasets_router.put("/{name}")
 async def update_dataset(dataset: Dataset, db: TenantDbDep, name: str):
@@ -113,7 +113,7 @@ async def update_dataset(dataset: Dataset, db: TenantDbDep, name: str):
 
     except Exception as e:
         print(f"problem with dataset: {dataset}", str(e))
-
+        raise e
 
 
 class BrowseRequestBody(BaseModel):
@@ -364,7 +364,8 @@ class ResultPropertyUpdateRequest(BaseModel):
     resultProperties: List[ResultProperty]
 
 @router.put("/result-properties", dependencies=[Depends(is_admin)])
-async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRequest, dataset: DatasetDep):
+async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRequest,
+                                dataset: DatasetDep):
     """
     Update result properties. Warning: replaces all existing properties with new properties (within
     dataset)
@@ -412,7 +413,8 @@ class DetailPropertyUpdateRequest(BaseModel):
     detailProperties: List[DetailProperty]
 
 @router.put("/detail-properties", dependencies=[Depends(is_admin)])
-async def set_detail_properties(db: TenantDbDep, request: DetailPropertyUpdateRequest, dataset: DatasetDep):
+async def set_detail_properties(db: TenantDbDep, request: DetailPropertyUpdateRequest,
+                                dataset: DatasetDep):
     """
     Update detail properties. Warning: replaces all existing properties with new properties (within
     dataset)
