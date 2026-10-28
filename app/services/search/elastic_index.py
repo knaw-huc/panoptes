@@ -60,7 +60,8 @@ class Index:
     facet_configuration: Dict[str, Facet]
     highlight_fields: Optional[List[str]] = None
 
-    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet], highlight_fields: Optional[list[str]] = None):
+    def __init__(self, client: Elasticsearch, index_name: str, available_facets: List[Facet],
+                 highlight_fields: Optional[list[str]] = None):
         self.client = client
         self.index_name = index_name
         self.facet_configuration = {
@@ -393,8 +394,8 @@ class Index:
             "highlight": {
                 "type": "unified",
                 "number_of_fragments": 0,
-                "pre_tags": [u"\uE000"],  # Use characters from Private Use Areas (PUA)
-                "post_tags": [u"\uE001"],
+                "pre_tags": ["\uE000"],  # Use characters from Private Use Areas (PUA)
+                "post_tags": ["\uE001"],
                 "fields": {field: {} for field in self.highlight_fields}
             } if self.highlight_fields is not None else None,
             "sort": [
