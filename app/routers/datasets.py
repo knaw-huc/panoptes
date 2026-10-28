@@ -322,7 +322,7 @@ async def update_facets(db: TenantDbDep, request: FacetUpdateRequest, dataset: D
         facet.dataset_name = dataset.name
         tmp.append(facet.model_dump())
 
-    db.facets.insert_many(tmp)
+    await db.facets.insert_many(tmp)
 
     return request
 
@@ -382,10 +382,10 @@ async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRe
 
     await db.result_properties.delete_many({"dataset_name": dataset.name})
 
-    db.result_properties.insert_many(tmp)
+    await db.result_properties.insert_many(tmp)
 
     return {
-        "result_properties": tmp
+        "status": "updated"
     }
 
 
@@ -431,10 +431,10 @@ async def set_detail_properties(db: TenantDbDep, request: DetailPropertyUpdateRe
 
     await db.detail_properties.delete_many({"dataset_name": dataset.name})
 
-    db.detail_properties.insert_many(tmp)
+    await db.detail_properties.insert_many(tmp)
 
     return {
-        "detail_properties": tmp
+        "status": "updated"
     }
 
 class FacetRequestBody(BaseModel):

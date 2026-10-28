@@ -6,7 +6,8 @@ from typing import Annotated
 
 from elasticsearch import Elasticsearch
 from fastapi import Depends, HTTPException, Header
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import AsyncMongoClient
+from pymongo.database import Database
 
 from app.config import get_settings, Settings
 from app.services.search.elastic_index import Index
@@ -22,7 +23,7 @@ async def startup_db_client(_app) -> None:
     :return:
     """
     settings = get_settings()
-    database_connections["mongo"] = AsyncIOMotorClient(
+    database_connections["mongo"] = AsyncMongoClient(
         settings.mongo_connection,
     )
 
@@ -67,7 +68,7 @@ async def shutdown_es_client(_app) -> None:
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
-def get_main_db() -> AsyncIOMotorDatabase:
+def get_main_db() -> Database:
     """
     Get the main database, which contains information about the tenants using the app.
     :return:
@@ -75,7 +76,7 @@ def get_main_db() -> AsyncIOMotorDatabase:
     return database_connections["mongo"].get_database("main")
 
 
-MainDbDep = Annotated[AsyncIOMotorClient, Depends(get_main_db)]
+MainDbDep = Annotated[AsyncMongoClient, Depends(get_main_db)]
 
 
 async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] = None) -> Tenant:
@@ -107,7 +108,7 @@ async def admin_domain(settings: SettingsDep, host: Annotated[str | None, Header
     return True
 
 
-def get_tenant_db(tenant: TenantDep) -> AsyncIOMotorDatabase:
+def get_tenant_db(tenant: TenantDep) -> Database:
     """
     Get the tenant specific database.
     :param tenant:
@@ -116,7 +117,7 @@ def get_tenant_db(tenant: TenantDep) -> AsyncIOMotorDatabase:
     return database_connections["mongo"].get_database(tenant.name)
 
 
-TenantDbDep = Annotated[AsyncIOMotorClient, Depends(get_tenant_db)]
+TenantDbDep = Annotated[AsyncMongoClient, Depends(get_tenant_db)]
 
 
 async def get_dataset(tenant_db: TenantDbDep, dataset_name: str) -> Dataset:
