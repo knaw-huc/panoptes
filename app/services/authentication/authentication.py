@@ -10,9 +10,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 
-# from motor.motor_asyncio import AsyncIOMotorClient
 from pwdlib import PasswordHash
-from pymongo import AsyncMongoClient
 from pymongo.synchronous.database import Database
 from starlette import status
 
