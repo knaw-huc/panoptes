@@ -108,8 +108,8 @@ class Index:
         mapping = self.client.indices.get_mapping(index=self.index_name)
         print(mapping)
         tmp = []
-        for k, v in mapping.items():
-            fields = self.get_fields_recursive(v["mappings"]["properties"])
+        for value in mapping.values():
+            fields = self.get_fields_recursive(value["mappings"]["properties"])
             for f in fields:
                 if "/" in f:
                     tmp.append(f"`{f}`")
