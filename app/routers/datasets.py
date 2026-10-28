@@ -7,12 +7,13 @@ import logging
 import math
 
 import boto3
-from fastapi import APIRouter, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Depends
 from pydantic import BaseModel, model_serializer
 
 from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
 from app.exceptions.search import UnknownFacetsException
-from app.models import Facet, DetailProperty, ResultProperty, FacetType
+from app.models import Facet, DetailProperty, ResultProperty, FacetType, Dataset
+from app.services.authentication.authentication import is_admin
 from app.services.search.elastic_index import FilterOptions
 from app.services.datasets.connectors import DatasetConnectorDep
 from app.tasks.tree_facets import construct_tree
@@ -39,6 +40,7 @@ class DatasetSummary(BaseModel):
     """
     name: str
     data_type: str
+    es_index: Optional[str] = None
     data_configuration: object
     metadata: object
 
@@ -62,6 +64,57 @@ async def list_datasets(db: TenantDbDep) -> list[DatasetSummary]:
         )
         for d in datasets
     ]
+
+@datasets_router.get("/{name}")
+async def get_dataset(db: TenantDbDep, name: str):
+    """
+    Get the information in the mongoDB for a particular dataset.
+    """
+    name = str(name)
+    print(f"....... dataset '{name}' ......")
+    dataset = await db["datasets"].find_one({"name": name})
+
+    if not dataset:
+        raise HTTPException(status_code=404, detail={"error": "Dataset not found"})
+
+    if "_id" in dataset:
+        dataset["_id"] = str(dataset["_id"])
+
+    return dataset
+
+
+@datasets_router.post("")
+async def post_dataset(dataset: Dataset, db: TenantDbDep):
+    """
+    Create a new dataset.
+    """
+    try:
+        db.datasets.insert_one(dataset.model_dump())
+        print(f"added dataset '{dataset.name}' to tenant")
+    except Exception as e:
+        print(f"problem with dataset: {dataset}")
+        print("validation error details:", str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+@datasets_router.put("/{name}")
+async def update_dataset(dataset: Dataset, db: TenantDbDep, name: str):
+    """
+    Update a dataset.
+    """
+    # name=str(name)
+    try:
+        result = await db['datasets'].update_one(
+            {"name": name},
+            {"$set": dataset.model_dump()}
+        )
+
+        if result.matched_count == 0:
+            print(f"dataset '{name}' not found")
+
+    except Exception as e:
+        print(f"problem with dataset: {dataset}", str(e))
+        raise e
+
 
 class BrowseRequestBody(BaseModel):
     """
@@ -225,6 +278,164 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
 
     return response
 
+
+@router.get("/facets/configuration")
+async def get_facet_configuration(db: TenantDbDep, dataset: DatasetDep):
+    """
+
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['facets'].find({
+        "dataset_name": dataset.name
+    }).sort("order")
+
+    facets_data = await cursor.to_list()
+
+    return {
+        "facets": [Facet(**facet) for facet in facets_data],
+    }
+
+
+class FacetUpdateRequest(BaseModel):
+    """
+    Request to update all facets
+    """
+    facets: List[Facet]
+
+
+@router.put("/facets/configuration", dependencies=[Depends(is_admin)])
+async def update_facets(db: TenantDbDep, request: FacetUpdateRequest, dataset: DatasetDep):
+    """
+    Update all facets of this dataset.
+    :param dataset:
+    :param request:
+    :param db:
+    :return:
+    """
+    await db.facets.delete_many({"dataset_name": dataset.name})
+
+    tmp = []
+
+    for facet in request.facets:
+        facet.dataset_name = dataset.name
+        tmp.append(facet.model_dump())
+
+    db.facets.insert_many(tmp)
+
+    return request
+
+
+@router.get("/available-properties", dependencies=[Depends(is_admin)])
+async def get_available_properties(es: ElasticIndexDep):
+    """
+    Returns all available properties in the elasticsearch index
+    :param es:
+    :return:
+    """
+    fields = es.get_fields()
+    return {
+        "available_properties": fields
+    }
+
+
+@router.get("/result-properties", dependencies=[Depends(is_admin)])
+async def get_result_properties(db: TenantDbDep, dataset: DatasetDep):
+    """
+    Get all result properties
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['result_properties'].find({
+        "dataset_name": dataset.name
+    })
+    result_properties_data = await cursor.to_list()
+
+    return {
+        "result_properties": [ResultProperty(**data) for data in result_properties_data]
+    }
+
+class ResultPropertyUpdateRequest(BaseModel):
+    """
+    Request to update all facets
+    """
+    resultProperties: List[ResultProperty]
+
+@router.put("/result-properties", dependencies=[Depends(is_admin)])
+async def set_result_properties(db: TenantDbDep, request: ResultPropertyUpdateRequest,
+                                dataset: DatasetDep):
+    """
+    Update result properties. Warning: replaces all existing properties with new properties (within
+    dataset)
+    :param request:
+    :param db:
+    :param dataset:
+    :return:
+    """
+    tmp = []
+
+    for facet in request.resultProperties:
+        facet.dataset_name = dataset.name
+        tmp.append(facet.model_dump())
+
+    await db.result_properties.delete_many({"dataset_name": dataset.name})
+
+    db.result_properties.insert_many(tmp)
+
+    return {
+        "result_properties": tmp
+    }
+
+
+@router.get("/detail-properties", dependencies=[Depends(is_admin)])
+async def get_detail_properties(db: TenantDbDep, dataset: DatasetDep):
+    """
+    Get all detail properties
+    :param db:
+    :param dataset:
+    :return:
+    """
+    cursor = db['detail_properties'].find({
+        "dataset_name": dataset.name
+    })
+    detail_properties_data = await cursor.to_list()
+
+    return {
+        "detail_properties": [DetailProperty(**data) for data in detail_properties_data]
+    }
+
+class DetailPropertyUpdateRequest(BaseModel):
+    """
+    Request to update all facets
+    """
+    detailProperties: List[DetailProperty]
+
+@router.put("/detail-properties", dependencies=[Depends(is_admin)])
+async def set_detail_properties(db: TenantDbDep, request: DetailPropertyUpdateRequest,
+                                dataset: DatasetDep):
+    """
+    Update detail properties. Warning: replaces all existing properties with new properties (within
+    dataset)
+    :param request:
+    :param db:
+    :param dataset:
+    :return:
+    """
+    tmp = []
+
+    for facet in request.detailProperties:
+        facet.dataset_name = dataset.name
+        tmp.append(facet.model_dump())
+
+    await db.detail_properties.delete_many({"dataset_name": dataset.name})
+
+    db.detail_properties.insert_many(tmp)
+
+    return {
+        "detail_properties": tmp
+    }
 
 class FacetRequestBody(BaseModel):
     """

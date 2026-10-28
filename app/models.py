@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, Annotated, Dict
 
 import jsonpath
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, ConfigDict
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -15,11 +15,29 @@ PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class Tenant(BaseModel):
     """
-    Represents an tenant.
+    Represents a tenant.
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str
     domain: str
+
+
+class User(BaseModel):
+    """
+    Represents a user
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    username: str
+    password_hash: str
+
+
+class RefreshToken(BaseModel):
+    """
+    Represents a refresh token
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    uuid: str
+    username: str
 
 
 @dataclass
@@ -44,7 +62,7 @@ class Dataset(BaseModel):
     Represents a dataset belonging to a tenant
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    tenant_name: str
+    tenant_name: Optional[str] = None
     name: str
     es_index: str
     data_type: str
@@ -76,6 +94,8 @@ class Facet(BaseModel):
     """
     Represents an indexed facet
     """
+    model_config = ConfigDict(use_enum_values=True)
+
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     dataset_name: str
     property: str # Name of the field in the ES index
@@ -93,6 +113,8 @@ class BaseProperty(ABC):
     Base class for property-related fields. Combine with BaseModel to make sure the resulting class
     becomes a model.
     """
+    model_config = ConfigDict(use_enum_values=True)
+
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     dataset_name: str
     name: str
