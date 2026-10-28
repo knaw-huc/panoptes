@@ -68,7 +68,7 @@ class Index:
             facet.property: facet
             for facet in available_facets
         }
-        self.highlight_fields = highlight_fields
+        self.highlight_fields = highlight_fields if highlight_fields else []
 
     @staticmethod
     def no_case(str_in):

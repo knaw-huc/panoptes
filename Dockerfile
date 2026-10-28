@@ -1,4 +1,4 @@
-FROM python:3.13.3-bullseye AS python-base
+FROM python:3.15.2-bookworm AS python-base
 
 # Set environment variables for Python, Pip, Poetry and project directories
 ENV PYTHONUNBUFFERED=1 \
@@ -22,7 +22,6 @@ RUN buildDeps="build-essential" \
     && apt-get install --no-install-recommends -y \
     curl \
     vim \
-    netcat \
     && apt-get install -y --no-install-recommends $buildDeps \
     && rm -rf /var/lib/apt/lists/*
 
