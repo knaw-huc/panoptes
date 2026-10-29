@@ -123,4 +123,26 @@ async def init_user(db: MainDbDep, form_data: OAuth2PasswordRequestForm = Depend
     }
 
 
+@router.post("/users")
+async def create_user(user: User, db: MainDbDep):
+    """
+    create a new user.
+    """
 
+    user = User(username=user.username, password_hash=get_password_hash(user.password_hash))
+    db['users'].insert_one(user.model_dump())
+    return {
+        "username": user.username,
+        "status": "created",
+    }
+
+@router.get("/users")
+async def get_users(db: MainDbDep):
+    """
+    get all usernames.
+    """
+
+    cursor = db.users.find({}, {"username":1, "_id": 0})
+    users = await cursor.to_list()
+
+    return [user["username"] for user in users]
