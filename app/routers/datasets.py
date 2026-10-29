@@ -232,11 +232,11 @@ class FacetResponse(Facet):
             "type": self.type,
             "startOpen": self.start_open,
         }
-        if self.type in [FacetType.RANGE, FacetType.HISTOGRAM]:
+        if FacetType(self.type) in [FacetType.RANGE, FacetType.HISTOGRAM]:
             data['start'] = self.start
             data['end'] = self.end
             data['step'] = self.step
-        if self.type == FacetType.TREE:
+        if FacetType(self.type) == FacetType.TREE:
             data['tree'] = self.tree
             data['expand_level'] = self.tree_expand_level
         return data
@@ -261,7 +261,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticInde
     facet_responses = {facet['property']: FacetResponse(**facet) for facet in facets_data}
     range_props = [
         facet.property for facet in facets.values()
-        if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM]
+        if FacetType(facet.type) in [FacetType.RANGE, FacetType.HISTOGRAM]
     ]
 
     if len(range_props) > 0:
