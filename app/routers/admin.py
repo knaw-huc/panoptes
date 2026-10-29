@@ -50,16 +50,16 @@ async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
     Edit tenant.
     """
     try:
-        result = await db['tenant'].update_one(
+        result = await db['tenants'].update_one(
             {"name": name},
             {"$set": tenant.model_dump()}
         )
 
         if result.matched_count == 0:
-            print(f"dataset '{name}' not found")
+            print(f"tenant '{name}' not found")
 
     except Exception as e:
-        print(f"problem with dataset: {tenant}", str(e))
+        print(f"problem with tenant: {tenant}", str(e))
         raise e
 
 
