@@ -465,7 +465,6 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
         "dataset_name": dataset.name,
         "property": name
     })
-    print("Getting facet")
     facet_data = (await cursor.to_list())[0]
     facet_obj = Facet(**facet_data)
     filter_options = FilterOptions(facets=facet.facets, query=facet.query)
