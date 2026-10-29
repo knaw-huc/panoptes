@@ -256,6 +256,8 @@ class Index:
         options = self.get_facet(facet, 10000, "",
                                  filter_options)
 
+        print("Calling get tree")
+
         tree = {}
 
         for option in options:
