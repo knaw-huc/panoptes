@@ -26,6 +26,8 @@ async def get_tenants(db: MainDbDep):
     print(tenant_list)
     return {"tenants": tenant_list}
 
+
+
 # post en put voor nieuwe tenants
 @router.post("/tenants")
 async def post_tenants(db: MainDbDep, tenant: Tenant):
@@ -39,6 +41,26 @@ async def post_tenants(db: MainDbDep, tenant: Tenant):
         print(f"problem with dataset: {tenant}")
         print("valisation error details:", str(e))
         raise HTTPException(status_code=422, detail=str(e))
+
+
+
+@router.put("/tenants")
+async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
+    """"
+    Edit tenant.
+    """
+    try:
+        result = await db['tenant'].update_one(
+            {"name": name},
+            {"$set": tenant.model_dump()}
+        )
+
+        if result.matched_count == 0:
+            print(f"dataset '{name}' not found")
+
+    except Exception as e:
+        print(f"problem with dataset: {tenant}", str(e))
+        raise e
 
 
 @router.get("/indices")

@@ -121,3 +121,6 @@ async def init_user(db: MainDbDep, form_data: OAuth2PasswordRequestForm = Depend
         "status": "initialized",
         "n_users": n_users
     }
+
+
+
