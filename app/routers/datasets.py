@@ -465,11 +465,13 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
         "dataset_name": dataset.name,
         "property": name
     })
+    print("Getting facet")
     facet_data = (await cursor.to_list())[0]
     facet_obj = Facet(**facet_data)
     filter_options = FilterOptions(facets=facet.facets, query=facet.query)
+    facet_type = FacetType(facet_obj.type)
     try:
-        if facet_obj.type == FacetType.RANGE:
+        if facet_type == FacetType.RANGE:
             min_max = es_index.get_min_max([facet.name])
             entry = min_max.get(name) or {
                 "min": facet_data.get("min", -math.inf),
@@ -480,7 +482,7 @@ async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBod
                 "end": entry["max"],
                 "step": facet_data.get("step", 1)
             }]
-        if facet_obj.type == FacetType.TREE:
+        if facet_type == FacetType.TREE:
             return es_index.get_tree(facet_obj, filter_options)
         return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options,
                                   facet.sort)
