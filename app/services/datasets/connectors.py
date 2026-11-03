@@ -11,9 +11,9 @@ from urllib.parse import urlparse
 import requests
 from fastapi import HTTPException, Depends
 
-from app.dependencies import DatasetDep, ElasticIndexDep
+from app.dependencies import DatasetDep, SearchIndexDep
 from app.models import Dataset, DataConfiguration
-from app.services.search.elastic_index import Index
+from app.services.search.index import Index
 
 
 def _assert_safe_external_url(url: str) -> None:
@@ -136,7 +136,7 @@ class ElasticsearchConnector(DatasetConnector):
         return item.es_result
 
 
-def get_dataset_connector(dataset: DatasetDep, elastic_index: ElasticIndexDep) -> DatasetConnector:
+def get_dataset_connector(dataset: DatasetDep, elastic_index: SearchIndexDep) -> DatasetConnector:
     """
     Depends on the type
     :param elastic_index:
