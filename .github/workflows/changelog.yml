@@ -1,0 +1,75 @@
+name: Update changelog on release
+
+# Automatically promotes the "[Unreleased]" section of CHANGELOG.md into a
+# dated version section whenever a GitHub release is published, and commits
+# the result back to the default branch.
+on:
+  release:
+    types: ['published']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to promote in the changelog (e.g. v1.2.3)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Resolve release metadata
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let release;
+            if (context.eventName === 'workflow_dispatch') {
+              const tag = context.payload.inputs.tag;
+              ({ data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              }));
+            } else {
+              release = context.payload.release;
+            }
+
+            const publishedAt = release.published_at || new Date().toISOString();
+            core.setOutput('tag', release.tag_name);
+            core.setOutput('date', publishedAt.slice(0, 10));
+            core.setOutput('body', release.body || '');
+
+      - name: Update CHANGELOG.md
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_DATE: ${{ steps.release.outputs.date }}
+          RELEASE_BODY: ${{ steps.release.outputs.body }}
+        run: python .github/scripts/update_changelog.py
+
+      - name: Commit and push changes
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "CHANGELOG.md is already up to date, nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for ${RELEASE_TAG}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
