@@ -83,7 +83,7 @@ async def get_dataset(db: TenantDbDep, name: str):
     return dataset
 
 
-@datasets_router.post("")
+@datasets_router.post("", dependencies=[Depends(is_admin)])
 async def post_dataset(dataset: Dataset, db: TenantDbDep):
     """
     Create a new dataset.
@@ -96,7 +96,7 @@ async def post_dataset(dataset: Dataset, db: TenantDbDep):
         print("validation error details:", str(e))
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-@datasets_router.put("/{name}")
+@datasets_router.put("/{name}", dependencies=[Depends(is_admin)])
 async def update_dataset(dataset: Dataset, db: TenantDbDep, name: str):
     """
     Update a dataset.

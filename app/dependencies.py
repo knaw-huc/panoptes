@@ -97,6 +97,27 @@ def get_main_db() -> Database:
 MainDbDep = Annotated[AsyncMongoClient, Depends(get_main_db)]
 
 
+def _extract_domain(host: str | None) -> str:
+    """
+    Safely extract and normalize the domain name from a `Host` header value.
+
+    NOTE: this trusts the `Host` header for tenant/admin domain resolution.
+    That is only safe when the application is exclusively reachable through
+    the trusted reverse proxy that performs the per-tenant domain routing
+    (i.e. the app itself must never be exposed directly to untrusted
+    networks, e.g. the `ports: 8000:8000` mapping in docker-compose.yml
+    should not be used in production).
+    :param host: the raw `Host` header value.
+    :return: the normalized (lower-cased, port-stripped) domain name.
+    """
+    if not host:
+        raise HTTPException(status_code=400, detail="Host header is required")
+    domain = host.split(":")[0].strip().lower()
+    if not domain:
+        raise HTTPException(status_code=400, detail="Host header is required")
+    return domain
+
+
 async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] = None) -> Tenant:
     """
     Get information about the current tenant, based on the domain name used to access the app.
@@ -104,7 +125,7 @@ async def get_tenant(main_db: MainDbDep, host: Annotated[str | None, Header()] =
     :param host:
     :return:
     """
-    domain = host.split(":")[0]
+    domain = _extract_domain(host)
     tenant = await main_db['tenants'].find_one({'domain': domain})
     if not tenant:
         raise HTTPException(status_code=404, detail="Domain name not known")
@@ -120,8 +141,8 @@ async def admin_domain(settings: SettingsDep, host: Annotated[str | None, Header
     :param host:
     :return:
     """
-    domain = host.split(":")[0]
-    if domain != settings.admin_domain:
+    domain = _extract_domain(host)
+    if domain != settings.admin_domain.strip().lower():
         raise HTTPException(status_code=404, detail="Domain name not known")
     return True
 
