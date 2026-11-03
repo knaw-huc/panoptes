@@ -29,10 +29,11 @@ async def startup_db_client(_app) -> None:
     tenants = database_connections["mongo"].get_database("main")["tenants"]
     duplicate_tenants = {}
     for field in ("name", "domain"):
-        duplicates = await tenants.aggregate([
+        cursor = await tenants.aggregate([
             {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
             {"$match": {"count": {"$gt": 1}}},
-        ]).to_list()
+        ])
+        duplicates = await cursor.to_list()
         if duplicates:
             duplicate_tenants[field] = [duplicate["_id"] for duplicate in duplicates]
 
