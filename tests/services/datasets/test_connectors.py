@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from app.services.datasets.connectors import (
     CMDIEditorConnector,
-    ElasticsearchConnector,
+    SearchIndexConnector,
     get_dataset_connector,
 )
 from app.services.search.dataclasses import ResultItem
@@ -36,7 +36,7 @@ class TestGetDatasetConnector:
 
         connector = get_dataset_connector(dataset, es_index)
 
-        assert isinstance(connector, ElasticsearchConnector)
+        assert isinstance(connector, SearchIndexConnector)
 
     def test_raises_for_unknown_type(self):
         """Reject an unsupported dataset type with an internal server error."""
@@ -57,7 +57,7 @@ class TestElasticsearchConnector:
         es_index = MagicMock()
         es_index.by_identifier.return_value = ResultItem(es_result={"title": "foo"}, index="abc")
         dataset = make_dataset()
-        connector = ElasticsearchConnector(dataset, es_index)
+        connector = SearchIndexConnector(dataset, es_index)
 
         result = connector.get_item("abc")
 
