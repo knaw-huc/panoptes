@@ -29,12 +29,21 @@ def _assert_safe_external_url(url: str) -> None:
     try:
         addr_infos = socket.getaddrinfo(parsed.hostname, None)
     except socket.gaierror as exc:
-        raise HTTPException(status_code=502, detail="Unable to resolve external source host") from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to resolve external source host",
+        ) from exc
 
     for *_rest, sockaddr in addr_infos:
         ip = ipaddress.ip_address(sockaddr[0])
-        if (ip.is_private or ip.is_loopback or ip.is_link_local
-                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+        if any((
+            ip.is_private,
+            ip.is_loopback,
+            ip.is_link_local,
+            ip.is_reserved,
+            ip.is_multicast,
+            ip.is_unspecified,
+        )):
             raise HTTPException(status_code=400, detail="External source host is not allowed")
 
 
