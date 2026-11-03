@@ -186,9 +186,9 @@ async def get_elasticsearch() -> Elasticsearch:
 ElasticsearchDep = Annotated[Elasticsearch, Depends(get_elasticsearch)]
 
 
-async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
+async def get_search_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     """
-    Get the Elasticsearch index for the current dataset.
+    Get the search index for the current dataset.
     :param db:
     :param dataset:
     :return:
@@ -205,4 +205,4 @@ async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
                               facets,
                               dataset.highlight_fields)
 
-SearchIndexDep = Annotated[Index, Depends(get_es_index)]
+SearchIndexDep = Annotated[Index, Depends(get_search_index)]

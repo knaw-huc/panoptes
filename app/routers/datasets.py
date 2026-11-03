@@ -177,7 +177,7 @@ async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
     }
 
 @router.post("/search")
-async def browse(es_index: SearchIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
+async def browse(search_index: SearchIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
                  dataset: DatasetDep):
     """
     Search for articles using elasticsearch.
@@ -185,7 +185,7 @@ async def browse(es_index: SearchIndexDep, struc: BrowseRequestBody, db: TenantD
     """
     filter_options = FilterOptions(facets=struc.facets, query=struc.query)
     try:
-        search_results = es_index.browse(struc.offset, struc.limit, filter_options)
+        search_results = search_index.browse(struc.offset, struc.limit, filter_options)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
             "error": "unknown_facets",
@@ -243,10 +243,10 @@ class FacetResponse(Facet):
 
 
 @router.get("/facets")
-async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: SearchIndexDep):
+async def get_facets(db: TenantDbDep, dataset: DatasetDep, search_index: SearchIndexDep):
     """
     Get all facets for this dataset.
-    :param es_index:
+    :param search_index:
     :param db:
     :param dataset:
     :return:
@@ -265,7 +265,7 @@ async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: SearchIndex
     ]
 
     if len(range_props) > 0:
-        mins_maxes = es_index.get_min_max(range_props)
+        mins_maxes = search_index.get_min_max(range_props)
 
         for prop, data in mins_maxes.items():
             facet = facets[prop]
@@ -450,14 +450,14 @@ class FacetRequestBody(BaseModel):
 
 
 @router.post("/facet/{name}")
-async def get_facet(name: str, es_index: SearchIndexDep, facet: FacetRequestBody, db: TenantDbDep,
+async def get_facet(name: str, search_index: SearchIndexDep, facet: FacetRequestBody, db: TenantDbDep,
               dataset: DatasetDep):
     """
     Get options for a given facet
     :param name:
     :param db:
     :param dataset:
-    :param es_index:
+    :param search_index:
     :param facet:
     :return:
     """
@@ -471,7 +471,7 @@ async def get_facet(name: str, es_index: SearchIndexDep, facet: FacetRequestBody
     facet_type = FacetType(facet_obj.type)
     try:
         if facet_type == FacetType.RANGE:
-            min_max = es_index.get_min_max([facet.name])
+            min_max = search_index.get_min_max([facet.name])
             entry = min_max.get(name) or {
                 "min": facet_data.get("min", -math.inf),
                 "max": facet_data.get("max", math.inf)
@@ -482,8 +482,8 @@ async def get_facet(name: str, es_index: SearchIndexDep, facet: FacetRequestBody
                 "step": facet_data.get("step", 1)
             }]
         if facet_type == FacetType.TREE:
-            return es_index.get_tree(facet_obj, filter_options)
-        return es_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options,
+            return search_index.get_tree(facet_obj, filter_options)
+        return search_index.get_facet(facet_obj, facet.amount, facet.filter, filter_options,
                                   facet.sort)
     except UnknownFacetsException as e:
         raise HTTPException(status_code=400, detail={
@@ -526,17 +526,17 @@ async def get_tree(name: str, db: TenantDbDep, dataset: DatasetDep,
 
 @router.post("/facet/{name}/rebuild", status_code=status.HTTP_202_ACCEPTED)
 def rebuild_tree(name: str, background_tasks: BackgroundTasks, db: TenantDbDep, dataset: DatasetDep,
-                 es_index: SearchIndexDep):
+                 search_index: SearchIndexDep):
     """
     Rebuild the tree for a given facet.
     :param dataset:
     :param db:
-    :param es_index:
+    :param search_index:
     :param name:
     :param background_tasks:
     :return:
     """
-    background_tasks.add_task(construct_tree, name, dataset, db, es_index)
+    background_tasks.add_task(construct_tree, name, dataset, db, search_index)
     return {
         "name": name,
         "message": "rebuild tree scheduled"
