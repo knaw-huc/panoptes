@@ -10,8 +10,8 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 
-from motor.motor_asyncio import AsyncIOMotorClient
 from pwdlib import PasswordHash
+from pymongo.synchronous.database import Database
 from starlette import status
 
 from app.config import get_settings
@@ -50,7 +50,7 @@ def get_password_hash(password: str) -> str:
     return password_hash.hash(password)
 
 
-async def get_user_with_password(username: str, password: str, db: AsyncIOMotorClient) -> User:
+async def get_user_with_password(username: str, password: str, db: Database) -> User:
     """
     Get user by username and password
     :param username:

@@ -2112,32 +2112,6 @@ files = [
 ]
 
 [[package]]
-name = "motor"
-version = "3.7.1"
-description = "Non-blocking MongoDB driver for Tornado or asyncio"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-markers = "python_version == \"3.13\" or python_version >= \"3.14\""
-files = [
-    {file = "motor-3.7.1-py3-none-any.whl", hash = "sha256:8a63b9049e38eeeb56b4fdd57c3312a6d1f25d01db717fe7d82222393c410298"},
-    {file = "motor-3.7.1.tar.gz", hash = "sha256:27b4d46625c87928f331a6ca9d7c51c2f518ba0e270939d395bc1ddc89d64526"},
-]
-
-[package.dependencies]
-pymongo = ">=4.9,<5.0"
-
-[package.extras]
-aws = ["pymongo[aws] (>=4.5,<5)"]
-docs = ["aiohttp", "furo (==2024.8.6)", "readthedocs-sphinx-search (>=0.3,<1.0)", "sphinx (>=5.3,<8)", "sphinx-rtd-theme (>=2,<3)", "tornado"]
-encryption = ["pymongo[encryption] (>=4.5,<5)"]
-gssapi = ["pymongo[gssapi] (>=4.5,<5)"]
-ocsp = ["pymongo[ocsp] (>=4.5,<5)"]
-snappy = ["pymongo[snappy] (>=4.5,<5)"]
-test = ["aiohttp (>=3.8.7)", "cffi (>=1.17.0rc1)", "mockupdb", "pymongo[encryption] (>=4.5,<5)", "pytest (>=7)", "pytest-asyncio", "tornado (>=5)"]
-zstd = ["pymongo[zstd] (>=4.5,<5)"]
-
-[[package]]
 name = "numpy"
 version = "2.5.4"
 description = "Fundamental package for array computing in Python"
@@ -3340,22 +3314,22 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.46.2"
+version = "1.10.0"
 description = "The little ASGI library that shines."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.11"
 groups = ["main"]
 markers = "python_version == \"3.13\" or python_version >= \"3.14\""
 files = [
-    {file = "starlette-0.46.2-py3-none-any.whl", hash = "sha256:595633ce89f8ffa71a015caed34a5b2dc1c0cdb3f0f1fbd1e69339cf2abeec35"},
-    {file = "starlette-0.46.2.tar.gz", hash = "sha256:7f7361f34eed179294600af672f565727419830b54b7b084efe44bb82d2fccd5"},
+    {file = "starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4"},
+    {file = "starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b"},
 ]
 
 [package.dependencies]
-anyio = ">=3.6.2,<5"
+anyio = ">=4.0.0,<5"
 
 [package.extras]
-full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
+full = ["httpx (>=0.27.0,<0.29.0)", "httpx2 (>=2.0.0)", "itsdangerous", "jinja2", "opentelemetry-api", "python-multipart (>=0.0.18)", "pyyaml"]
 
 [[package]]
 name = "tomlkit"
@@ -3887,4 +3861,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "17fb0eba2f0cd4b6c1ea1fdcb8501ceb4e690cdd17594058972d143091874bfa"
+content-hash = "3ea809128c21dff865835d7252bfccf16fd985984c5e46361ec189aa2ac417e4"

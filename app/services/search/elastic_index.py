@@ -134,7 +134,7 @@ class Index:
                 unknown_facets.append(key)
                 continue
             facet = self.facet_configuration[key]
-            if facet.type in [FacetType.RANGE, FacetType.HISTOGRAM, FacetType.DATE]:
+            if FacetType(facet.type) in [FacetType.RANGE, FacetType.HISTOGRAM, FacetType.DATE]:
                 range_values = values[0]
                 r_array = range_values.split(':')
                 must_collection.append(
@@ -170,13 +170,13 @@ class Index:
         :return:
         """
         val_key = "key"
-        if facet.type == FacetType.HISTOGRAM:
+        if FacetType(facet.type) == FacetType.HISTOGRAM:
             agg_settings = {
                 "field": facet.property,
                 "interval": facet.interval,
             }
             agg_type = 'histogram'
-        elif facet.type == FacetType.DATE:
+        elif FacetType(facet.type) == FacetType.DATE:
             agg_settings = {
                 "field": facet.property,
                 # "buckets": 50,
@@ -219,7 +219,7 @@ class Index:
                 }
             }
         response = self.client.search(index=self.index_name, body=body)
-        if facet.type == FacetType.DATE:
+        if FacetType(facet.type) == FacetType.DATE:
             # We need to make the labels more clear by adding the 'to' end of the bucket
             # interval = response["aggregations"]["names"]["interval"]
 
@@ -231,7 +231,7 @@ class Index:
                               "count": hits["doc_count"],
                               }
                              for hits in response["aggregations"]["names"]["buckets"]]
-        elif facet.type == FacetType.HISTOGRAM:
+        elif FacetType(facet.type) == FacetType.HISTOGRAM:
             interval = facet.interval
             response_data = [{"value": hits[val_key],
                               "start": hits[val_key],
