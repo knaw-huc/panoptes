@@ -7,14 +7,18 @@ servers:
   - url: '/api'
 tags:
   - name: Datasets
-    description: Endpoints for interacting with a dataset
+    description: Endpoints for managing and interacting with a dataset
   - name: Facets
     description: Endpoints for interacting with facets
+  - name: Admin
+    description: Endpoints for managing the Panoptes system as a whole (tenants, indices, facet types). Only available on the admin domain and for admin users.
+  - name: Auth
+    description: Endpoints for authentication and user management. Only available on the admin domain.
 paths:
   /datasets:
     get:
       summary: Get available data sets
-      description: Get the available data sets.
+      description: Get all available datasets for the current tenant. Sensitive configuration values (e.g. S3/auth secrets) are stripped from the response.
       tags:
         - Datasets
       responses:
@@ -25,7 +29,97 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/DataSet"
+                  $ref: "#/components/schemas/DatasetSummary"
+    post:
+      summary: Create a dataset
+      description: Create a new dataset for the current tenant. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Dataset to create
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Dataset"
+      responses:
+        200:
+          description: Dataset created
+        422:
+          description: Invalid dataset
+
+  /datasets/{name}:
+    get:
+      summary: Get a dataset
+      description: Get the full configuration stored in the database for a particular dataset.
+      tags:
+        - Datasets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNamePath"
+      responses:
+        200:
+          description: Dataset configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+        404:
+          description: Dataset not found
+    put:
+      summary: Update a dataset
+      description: Update the configuration of an existing dataset. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNamePath"
+      requestBody:
+        description: Updated dataset
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Dataset"
+      responses:
+        200:
+          description: Dataset updated
+
+  /datasets/{dataset_name}/resolve:
+    post:
+      summary: Resolve an external resource
+      description: |
+        Resolve a reference to an external resource. Currently, this only supports S3 buckets,
+        and for those the endpoint creates a signed URL the client can use to retrieve the resource.
+      tags:
+        - Datasets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      requestBody:
+        description: Resource to resolve
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resource:
+                  description: Reference to the resource, e.g. an s3:// url
+                  type: string
+                  example: s3://my-bucket/path/to/file.jpg
+      responses:
+        200:
+          description: Resolved resource details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        400:
+          description: Invalid resource reference
+        500:
+          description: Missing S3 configuration for this dataset
 
   /datasets/{dataset_name}/search:
     post:
@@ -33,6 +127,8 @@ paths:
       description: Search in the index of the dataset.
       tags:
         - Datasets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
       requestBody:
         description: Search parameters
         content:
@@ -42,20 +138,19 @@ paths:
               properties:
                 offset:
                   type: integer
+                  default: 0
                 limit:
                   type: integer
+                  default: 10
                 query:
                   type: string
                 facets:
                   type: object
                   additionalProperties:
                     x-additionalPropertiesName: field
-                    type: object
-                    properties:
-                      values:
-                        type: array
-                        items:
-                          type: string
+                    type: array
+                    items:
+                      type: string
 
       responses:
         200:
@@ -66,24 +161,22 @@ paths:
                 type: object
                 properties:
                   amount:
+                    description: Total amount of matching results
+                    type: integer
+                  pages:
+                    description: Total amount of pages, based on the given limit
                     type: integer
                   items:
                     type: array
                     items:
+                      description: |
+                        An object containing the configured result properties for this dataset. The
+                        available keys depend on the result properties configured for the dataset
+                        (see `/datasets/{dataset_name}/result-properties`).
                       type: object
-                      properties:
-                        item_id:
-                          type: string
-                        title:
-                          type: string
-                        description:
-                          type: string
-                        tags:
-                          type: array
-                          items:
-                            type: string
-
-
+                      additionalProperties: true
+        400:
+          description: One or more of the given facets are not known for this dataset
 
   /datasets/{dataset_name}/details/{item_id}:
     get:
@@ -91,6 +184,13 @@ paths:
       description: Get the details for a specific item in the dataset.
       tags:
         - Datasets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+        - in: path
+          name: item_id
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: Item details
@@ -113,9 +213,11 @@ paths:
   /datasets/{dataset_name}/facets:
     get:
       summary: Get facets
-      description: Get the facets used in this dataset.
+      description: Get the facets used in this dataset, including the current min/max for range and histogram facets.
       tags:
         - Facets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
       responses:
         200:
           description: Facets
@@ -124,15 +226,210 @@ paths:
               schema:
                 type: array
                 items:
-                  oneOf:
-                    - $ref: "#/components/schemas/TextFacet"
-                    - $ref: "#/components/schemas/RangeFacet"
-  /datasets/{dataset_name}/facet:
+                  $ref: "#/components/schemas/FacetResponse"
+
+  /datasets/{dataset_name}/facets/configuration:
+    get:
+      summary: Get facet configuration
+      description: Get the raw, stored facet configuration for this dataset.
+      tags:
+        - Facets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      responses:
+        200:
+          description: Facet configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  facets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Facet"
+    put:
+      summary: Update facet configuration
+      description: |
+        Replace the facet configuration for this dataset. Warning: replaces all existing facets with
+        the given facets. Requires admin privileges.
+      tags:
+        - Facets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      requestBody:
+        description: New facet configuration
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                facets:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Facet"
+      responses:
+        200:
+          description: Updated facet configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  facets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Facet"
+
+  /datasets/{dataset_name}/available-properties:
+    get:
+      summary: Get available properties
+      description: Get all available properties (fields) in the elasticsearch index of this dataset. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      responses:
+        200:
+          description: Available properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available_properties:
+                    type: array
+                    items:
+                      type: string
+
+  /datasets/{dataset_name}/result-properties:
+    get:
+      summary: Get result properties
+      description: Get the configured properties shown in the search results view. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      responses:
+        200:
+          description: Result properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result_properties:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ResultProperty"
+    put:
+      summary: Update result properties
+      description: |
+        Replace the result properties for this dataset. Warning: replaces all existing properties
+        with the given properties. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      requestBody:
+        description: New result properties
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultProperties:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ResultProperty"
+      responses:
+        200:
+          description: Status of the update
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /datasets/{dataset_name}/detail-properties:
+    get:
+      summary: Get detail properties
+      description: Get the configured properties shown in the item detail view. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      responses:
+        200:
+          description: Detail properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail_properties:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DetailProperty"
+    put:
+      summary: Update detail properties
+      description: |
+        Replace the detail properties for this dataset. Warning: replaces all existing properties
+        with the given properties. Requires admin privileges.
+      tags:
+        - Datasets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+      requestBody:
+        description: New detail properties
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                detailProperties:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/DetailProperty"
+      responses:
+        200:
+          description: Status of the update
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /datasets/{dataset_name}/facet/{name}:
     post:
       summary: Get Facet options
       description: Get the available options for a specific facet.
       tags:
         - Facets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+        - in: path
+          name: name
+          required: true
+          description: Name of the facet to get options for (must match the path parameter in the request body)
+          schema:
+            type: string
       requestBody:
         description: Search options
         content:
@@ -154,7 +451,6 @@ paths:
                 query:
                   description: Text query used for filtering search results (not facet options). Used to make sure the counts reflect the actual search results.
                   type: string
-                  required: false
                 sort:
                   type: string
                   enum:
@@ -165,24 +461,369 @@ paths:
                   type: object
                   additionalProperties:
                     x-additionalPropertiesName: field
-                    type: object
-                    properties:
-                      values:
-                        type: array
-                        items:
-                          type: string
+                    type: array
+                    items:
+                      type: string
 
       responses:
         200:
-          description: Facet results
+          description: |
+            Facet results. For a `range` facet, a single-item array with `start`/`end`/`step` is
+            returned. For a `tree` facet, the full tree (with nested `children`) is returned. For
+            other facet types, a flat array of value/count pairs is returned.
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/FacetResult"
+        400:
+          description: One or more of the given facets are not known for this dataset
+
+  /datasets/{dataset_name}/facet/{name}/tree:
+    get:
+      summary: Get tree facet children
+      description: Lazily load the child nodes of a tree facet, optionally below a given parent value.
+      tags:
+        - Facets
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+        - in: path
+          name: name
+          required: true
+          description: Name of the tree facet
+          schema:
+            type: string
+        - in: query
+          name: parent
+          required: false
+          description: Value of the parent node to get children for. Omit to get the root nodes.
+          schema:
+            type: string
+      responses:
+        200:
+          description: Tree nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        property:
+                          type: string
+                        name:
+                          type: string
+                        value:
+                          type: string
+                        parent:
+                          type: [string, 'null']
+                        hasChildren:
+                          type: boolean
+
+  /datasets/{dataset_name}/facet/{name}/rebuild:
+    post:
+      summary: Rebuild tree facet
+      description: Schedule a background task to rebuild the lazy-loaded tree nodes for a given tree facet. Requires admin privileges.
+      tags:
+        - Facets
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DatasetNameInPathPath"
+        - in: path
+          name: name
+          required: true
+          description: Name of the tree facet to rebuild
+          schema:
+            type: string
+      responses:
+        202:
+          description: Rebuild scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  message:
+                    type: string
+
+  /admin/tenants:
+    get:
+      summary: Get tenants
+      description: Get all tenants. Only available on the admin domain, requires admin privileges.
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Tenants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+    post:
+      summary: Create a tenant
+      description: Create a new tenant. Only available on the admin domain, requires admin privileges.
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Tenant to create
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Tenant"
+      responses:
+        200:
+          description: Tenant created
+        409:
+          description: Tenant name or domain already exists
+        422:
+          description: Invalid tenant
+    put:
+      summary: Update a tenant
+      description: Update an existing tenant. The tenant name cannot be changed. Only available on the admin domain, requires admin privileges.
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          required: true
+          description: Name of the tenant to update
+          schema:
+            type: string
+      requestBody:
+        description: Updated tenant (name must match the `name` query parameter)
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Tenant"
+      responses:
+        200:
+          description: Tenant updated
+        400:
+          description: Tenant name cannot be changed
+        404:
+          description: Tenant not found
+        409:
+          description: Tenant name or domain already exists
+
+  /admin/indices:
+    get:
+      summary: Get elasticsearch indices
+      description: Get all available elasticsearch indices in this configuration. Only available on the admin domain, requires admin privileges.
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Indices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  indices:
+                    type: array
+                    items:
+                      type: string
+
+  /admin/facettypes:
+    get:
+      summary: Get facet types
+      description: Get the available types for facets. Only available on the admin domain, requires admin privileges.
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Facet types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  facetTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: [text, number, range, histogram, date, tree]
+
+  /auth/token:
+    post:
+      summary: Log in
+      description: Log in with a username and password to obtain an access and refresh token. Uses the OAuth2 password grant flow. Only available on the admin domain.
+      tags:
+        - Auth
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        200:
+          description: Access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        401:
+          description: Incorrect username or password
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Exchange a valid refresh token for a new access and refresh token pair. Only available on the admin domain.
+      tags:
+        - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+              required:
+                - refresh_token
+      responses:
+        200:
+          description: New access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        401:
+          description: Invalid credentials
+
+  /auth/init-user:
+    post:
+      summary: Initialize the first admin user
+      description: |
+        If no users exist yet, creates the first (admin) user. Returns a 409 error if there are
+        already users. Only available on the admin domain.
+      tags:
+        - Auth
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        200:
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  status:
+                    type: string
+                  n_users:
+                    type: integer
+        409:
+          description: Already initialized
+
+  /auth/users:
+    post:
+      summary: Create a user
+      description: Create a new user. Requires admin privileges. Only available on the admin domain.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        200:
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  status:
+                    type: string
+        409:
+          description: Username already exists
+    get:
+      summary: Get users
+      description: Get all usernames. Requires admin privileges. Only available on the admin domain.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Usernames
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DatasetNamePath:
+      in: path
+      name: name
+      required: true
+      description: Name of the dataset
+      schema:
+        type: string
+    DatasetNameInPathPath:
+      in: path
+      name: dataset_name
+      required: true
+      description: Name of the dataset
+      schema:
+        type: string
   schemas:
     Block:
       type: object
@@ -211,7 +852,7 @@ components:
           enum: ['text']
         startOpen:
           description: Whether this facet should be expanded initially
-          type: bool
+          type: boolean
     RangeFacet:
       type: object
       properties:
@@ -224,12 +865,73 @@ components:
         type:
           type: string
           enum: ['range']
-        min:
+        startOpen:
+          description: Whether this facet should be expanded initially
+          type: boolean
+        start:
           type: integer
-        max:
+        end:
           type: integer
         step:
           type: integer
+    TreeFacet:
+      type: object
+      properties:
+        property:
+          description: Property which this searches in.
+          type: string
+        name:
+          description: Human readable name of the facet.
+          type: string
+        type:
+          type: string
+          enum: ['tree']
+        startOpen:
+          description: Whether this facet should be expanded initially
+          type: boolean
+        tree:
+          description: Pre-built facet tree, if available
+          type: [object, 'null']
+        expand_level:
+          description: Amount of levels of the tree to initially expand
+          type: [integer, 'null']
+    FacetResponse:
+      description: A facet as returned by `/datasets/{dataset_name}/facets`. The shape depends on the facet `type`.
+      oneOf:
+        - $ref: "#/components/schemas/TextFacet"
+        - $ref: "#/components/schemas/RangeFacet"
+        - $ref: "#/components/schemas/TreeFacet"
+    Facet:
+      description: Stored facet configuration.
+      type: object
+      properties:
+        dataset_name:
+          type: string
+        property:
+          description: Name of the field in the elasticsearch index
+          type: string
+        name:
+          description: Human readable name of the facet.
+          type: string
+        type:
+          type: string
+          enum: [text, number, range, histogram, date, tree]
+        order:
+          type: integer
+          default: 0
+        interval:
+          oneOf:
+            - type: integer
+            - type: string
+            - type: 'null'
+        tree_separator:
+          type: [string, 'null']
+          default: '|'
+        tree_expand_level:
+          type: [integer, 'null']
+        start_open:
+          type: boolean
+          default: false
     FacetResult:
       type: object
       properties:
@@ -244,15 +946,46 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FacetResult"
-    DataSet:
+        start:
+          description: For range facets
+          type: integer
+        end:
+          description: For range facets
+          type: integer
+        step:
+          description: For range facets
+          type: integer
+    DatasetSummary:
+      description: Public summary of a dataset, excludes sensitive configuration such as S3 credentials and auth tokens.
       type: object
       properties:
         name:
           type: string
         data_type:
           type: string
+        es_index:
+          type: [string, 'null']
         data_configuration:
           type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+    Dataset:
+      description: Full dataset configuration, as stored in the database.
+      type: object
+      properties:
+        tenant_name:
+          type: [string, 'null']
+        name:
+          type: string
+        es_index:
+          type: string
+        data_type:
+          type: string
+        data_configuration:
+          type: object
+          additionalProperties: true
           properties:
             id_property:
               type: string
@@ -260,3 +993,96 @@ components:
               type: string
             home_url:
               type: string
+            auth:
+              type: object
+              additionalProperties: true
+            s3_key_id:
+              type: string
+            s3_secret:
+              type: string
+            s3_endpoint:
+              type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        detail_id:
+          description: Field that determines the ID of an item
+          type: string
+        highlight_fields:
+          type: [array, 'null']
+          items:
+            type: string
+      required:
+        - name
+        - es_index
+        - data_type
+        - data_configuration
+        - metadata
+        - detail_id
+    ResultProperty:
+      type: object
+      properties:
+        dataset_name:
+          type: string
+        name:
+          type: string
+        path:
+          description: JSONPath expression used to extract the value from the search result
+          type: string
+        order:
+          type: integer
+        config:
+          type: [object, 'null']
+          additionalProperties: true
+        type:
+          type: string
+          enum: [text, number, range, histogram, date, tree]
+    DetailProperty:
+      type: object
+      properties:
+        dataset_name:
+          type: string
+        name:
+          type: string
+        path:
+          description: JSONPath expression used to extract the value from the item data
+          type: string
+        order:
+          type: integer
+        config:
+          type: [object, 'null']
+          additionalProperties: true
+        type:
+          description: Rendering type, e.g. `text`, `image_s3`
+          type: string
+    Tenant:
+      type: object
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+      required:
+        - name
+        - domain
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+        password_hash:
+          description: On create/update requests, this is the plain-text password, which the server hashes before storing.
+          type: string
+      required:
+        - username
+        - password_hash
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
