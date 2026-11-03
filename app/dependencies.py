@@ -26,6 +26,24 @@ async def startup_db_client(_app) -> None:
     database_connections["mongo"] = AsyncMongoClient(
         settings.mongo_connection,
     )
+    tenants = database_connections["mongo"].get_database("main")["tenants"]
+    duplicate_tenants = {}
+    for field in ("name", "domain"):
+        duplicates = await tenants.aggregate([
+            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
+            {"$match": {"count": {"$gt": 1}}},
+        ]).to_list()
+        if duplicates:
+            duplicate_tenants[field] = [duplicate["_id"] for duplicate in duplicates]
+
+    if duplicate_tenants:
+        raise RuntimeError(
+            "Cannot create unique tenant indexes; resolve existing duplicates first: "
+            f"{duplicate_tenants}"
+        )
+
+    await tenants.create_index("name", unique=True)
+    await tenants.create_index("domain", unique=True)
 
 async def startup_es_client(_app) -> None:
     """
