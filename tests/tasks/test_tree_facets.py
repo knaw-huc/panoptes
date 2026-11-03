@@ -11,6 +11,7 @@ from app.tasks.tree_facets import construct_tree
 
 
 def make_dataset() -> Dataset:
+    """Build a dataset for the tree construction task."""
     return Dataset(
         name="my-dataset",
         es_index="my-index",
@@ -44,6 +45,7 @@ def make_db(facet_doc):
 
 @pytest.mark.asyncio
 async def test_construct_tree_inserts_nodes_for_each_tree_entry():
+    """Insert both parent and child entries from the facet tree."""
     dataset = make_dataset()
     facet_doc = {"_id": "facet1", "dataset_name": "my-dataset", "property": "path"}
     db, nodes_collection = make_db(facet_doc)

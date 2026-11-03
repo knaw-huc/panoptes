@@ -19,19 +19,26 @@ from app.services.authentication.authentication import (
 
 
 class TestPasswordHashing:
+    """Password hash verification."""
+
     def test_verify_password_succeeds_for_matching_password(self):
+        """Accept a password that matches its stored hash."""
         hashed = get_password_hash("correct-horse")
 
         assert verify_password("correct-horse", hashed) is True
 
     def test_verify_password_fails_for_wrong_password(self):
+        """Reject a password that does not match its stored hash."""
         hashed = get_password_hash("correct-horse")
 
         assert verify_password("wrong-password", hashed) is False
 
 
 class TestCreateAccessToken:
+    """Access token claims and expiration."""
+
     def test_token_contains_provided_claims(self, fake_settings):
+        """Include the supplied subject and an expiration in the signed token."""
         token = create_access_token({"sub": "alice"})
 
         payload = jwt.decode(token, fake_settings.jwt_secret, algorithms=[ALGORITHM])
@@ -41,6 +48,7 @@ class TestCreateAccessToken:
 
 
 def make_db(users):
+    """Build a mock database whose user query returns the supplied records."""
     db = MagicMock()
     cursor = MagicMock()
     cursor.to_list = AsyncMock(return_value=users)
@@ -49,8 +57,11 @@ def make_db(users):
 
 
 class TestGetUserWithPassword:
+    """User lookup and credential validation."""
+
     @pytest.mark.asyncio
     async def test_returns_user_for_valid_credentials(self):
+        """Return the user when the username and password are valid."""
         hashed = get_password_hash("secret")
         db = make_db([{"_id": "1", "username": "alice", "password_hash": hashed}])
 
@@ -61,6 +72,7 @@ class TestGetUserWithPassword:
 
     @pytest.mark.asyncio
     async def test_raises_for_unknown_user(self):
+        """Reject credentials for a username absent from the database."""
         db = make_db([])
 
         with pytest.raises(InvalidCredentialsException):
@@ -68,6 +80,7 @@ class TestGetUserWithPassword:
 
     @pytest.mark.asyncio
     async def test_raises_for_wrong_password(self):
+        """Reject an incorrect password for an existing user."""
         hashed = get_password_hash("secret")
         db = make_db([{"_id": "1", "username": "alice", "password_hash": hashed}])
 
