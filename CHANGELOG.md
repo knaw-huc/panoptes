@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Admin endpoints for creating and updating tenants (`POST`/`PUT /api/admin/tenants`).
 - Endpoints for creating and listing users (`POST`/`GET /api/auth/users`).
 - Unit tests for authentication and tenant/user management.
+- GitHub Actions workflow for updating the changelog on release.
 
 ### Changed
 - Enforce unique tenant names and domains via unique MongoDB indexes.
