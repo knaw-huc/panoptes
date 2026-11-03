@@ -450,8 +450,8 @@ class FacetRequestBody(BaseModel):
 
 
 @router.post("/facet/{name}")
-async def get_facet(name: str, search_index: SearchIndexDep, facet: FacetRequestBody, db: TenantDbDep,
-              dataset: DatasetDep):
+async def get_facet(name: str, search_index: SearchIndexDep, facet: FacetRequestBody,
+                    db: TenantDbDep, dataset: DatasetDep):
     """
     Get options for a given facet
     :param name:
