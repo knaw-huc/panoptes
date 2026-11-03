@@ -40,7 +40,7 @@ async def post_tenants(db: MainDbDep, tenant: Tenant):
     except Exception as e:
         print(f"problem with dataset: {tenant}")
         print("valisation error details:", str(e))
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 
