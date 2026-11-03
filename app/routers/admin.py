@@ -2,7 +2,9 @@
 Endpoints for managing the Panoptes system as a whole.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+
+from pymongo.errors import DuplicateKeyError
 
 from app.dependencies import MainDbDep, admin_domain, ElasticsearchDep
 from app.models import Tenant
@@ -25,6 +27,55 @@ async def get_tenants(db: MainDbDep):
     tenant_list = [Tenant(**tenant) for tenant in await tenants.to_list()]
     print(tenant_list)
     return {"tenants": tenant_list}
+
+
+
+# post en put voor nieuwe tenants
+@router.post("/tenants")
+async def post_tenants(db: MainDbDep, tenant: Tenant):
+    """"
+    Post new tenants.
+    """
+    try:
+        await db.tenants.insert_one(tenant.model_dump())
+        print(f"added dataset '{tenant.name}' to tenant")
+    except DuplicateKeyError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="Tenant name or domain already exists",
+        ) from e
+    except Exception as e:
+        print(f"problem with dataset: {tenant}")
+        print("valisation error details:", str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+
+@router.put("/tenants")
+async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
+    """"
+    Edit tenant.
+    """
+    if tenant.name != name:
+        raise HTTPException(status_code=400, detail="Tenant name cannot be changed")
+
+    try:
+        result = await db['tenants'].update_one(
+            {"name": name},
+            {"$set": tenant.model_dump()}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail=f"Tenant '{name}' not found")
+
+    except DuplicateKeyError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="Tenant name or domain already exists",
+        ) from e
+    except Exception as e:
+        print(f"problem with tenant: {tenant}", str(e))
+        raise e
 
 
 @router.get("/indices")

@@ -11,13 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 from starlette import status
 
 from app.dependencies import MainDbDep, admin_domain, SettingsDep
 from app.models import RefreshToken, User
 from app.services.authentication.authentication import get_user_with_password, \
     InvalidCredentialsException, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES, \
-    create_access_token, get_password_hash, ALGORITHM
+    create_access_token, get_password_hash, ALGORITHM, is_admin
 
 router = APIRouter(
     prefix="/api/auth",
@@ -121,3 +122,33 @@ async def init_user(db: MainDbDep, form_data: OAuth2PasswordRequestForm = Depend
         "status": "initialized",
         "n_users": n_users
     }
+
+
+@router.post("/users", dependencies=[Depends(is_admin)])
+async def create_user(user: User, db: MainDbDep):
+    """
+    create a new user.
+    """
+
+    user = User(username=user.username, password_hash=get_password_hash(user.password_hash))
+    await db['users'].create_index("username", unique=True)
+    try:
+        await db['users'].insert_one(user.model_dump())
+    except DuplicateKeyError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Username already exists") from e
+    return {
+        "username": user.username,
+        "status": "created",
+    }
+
+@router.get("/users", dependencies=[Depends(is_admin)])
+async def get_users(db: MainDbDep):
+    """
+    get all usernames.
+    """
+
+    cursor = db.users.find({}, {"username":1, "_id": 0})
+    users = await cursor.to_list()
+
+    return [user["username"] for user in users]
