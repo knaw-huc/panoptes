@@ -2,8 +2,11 @@
 Implementation specific classes for dealing with dataset connections.
 """
 import base64
+import ipaddress
+import socket
 from abc import ABC, abstractmethod
 from typing import Annotated
+from urllib.parse import urlparse
 
 import requests
 from fastapi import HTTPException, Depends
@@ -11,6 +14,28 @@ from fastapi import HTTPException, Depends
 from app.dependencies import DatasetDep, ElasticIndexDep
 from app.models import Dataset, DataConfiguration
 from app.services.search.elastic_index import Index
+
+
+def _assert_safe_external_url(url: str) -> None:
+    """
+    Guard against SSRF: only allow http(s) URLs that do not resolve to
+    private, loopback, link-local or otherwise reserved network ranges.
+    :param url: the URL to validate
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Invalid external source URL")
+
+    try:
+        addr_infos = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror as exc:
+        raise HTTPException(status_code=502, detail="Unable to resolve external source host") from exc
+
+    for *_rest, sockaddr in addr_infos:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            raise HTTPException(status_code=400, detail="External source host is not allowed")
 
 
 class DatasetConnector(ABC):
@@ -66,8 +91,10 @@ class CMDIEditorConnector(DatasetConnector):
                 password = self.data_configuration.auth["password"]
                 token = base64.b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
                 headers["Authorization"] = f"Basic {token}"
+            request_url = f"{self.api_base}/{item_id}.json2"
+            _assert_safe_external_url(request_url)
             print("Getting " + f"{self.api_base}/{item_id}")
-            response = requests.get(f"{self.api_base}/{item_id}.json2", headers=headers, timeout=5)
+            response = requests.get(request_url, headers=headers, timeout=5, allow_redirects=False)
         except requests.exceptions.Timeout as exc:
             raise HTTPException(status_code=504, detail="External source timed out.") from exc
         if response.status_code >= 400:
