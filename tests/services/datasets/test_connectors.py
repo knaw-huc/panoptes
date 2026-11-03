@@ -55,7 +55,8 @@ class TestElasticsearchConnector:
     def test_get_item_returns_es_result(self):
         """Return the indexed document using the dataset's identifier field."""
         search_index = MagicMock()
-        search_index.by_identifier.return_value = ResultItem(es_result={"title": "foo"}, index="abc")
+        search_index.by_identifier.return_value = ResultItem(es_result={"title": "foo"},
+                                                             index="abc")
         dataset = make_dataset()
         connector = SearchIndexConnector(dataset, search_index)
 
