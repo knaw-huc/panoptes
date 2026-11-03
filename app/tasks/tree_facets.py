@@ -2,12 +2,12 @@
 Queue tasks related to tree facets.
 """
 
-from app.dependencies import TenantDbDep, ElasticIndexDep, DatasetDep
+from app.dependencies import TenantDbDep, SearchIndexDep, DatasetDep
 from app.services.search.dataclasses import FilterOptions
 
 
 async def construct_tree(facet_name: str, dataset: DatasetDep, db: TenantDbDep,
-                         es_index: ElasticIndexDep):
+                         es_index: SearchIndexDep):
     """
     Construct a tree for a facet.
     :param facet_name:

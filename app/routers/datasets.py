@@ -10,7 +10,7 @@ import boto3
 from fastapi import APIRouter, HTTPException, BackgroundTasks, status, Depends
 from pydantic import BaseModel, model_serializer
 
-from app.dependencies import DatasetDep, TenantDbDep, ElasticIndexDep
+from app.dependencies import DatasetDep, TenantDbDep, SearchIndexDep
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, DetailProperty, ResultProperty, FacetType, Dataset
 from app.services.authentication.authentication import is_admin
@@ -177,7 +177,7 @@ async def resolve(dataset: DatasetDep, request: ResolveRequestBody):
     }
 
 @router.post("/search")
-async def browse(es_index: ElasticIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
+async def browse(es_index: SearchIndexDep, struc: BrowseRequestBody, db: TenantDbDep,
                  dataset: DatasetDep):
     """
     Search for articles using elasticsearch.
@@ -243,7 +243,7 @@ class FacetResponse(Facet):
 
 
 @router.get("/facets")
-async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: ElasticIndexDep):
+async def get_facets(db: TenantDbDep, dataset: DatasetDep, es_index: SearchIndexDep):
     """
     Get all facets for this dataset.
     :param es_index:
@@ -328,7 +328,7 @@ async def update_facets(db: TenantDbDep, request: FacetUpdateRequest, dataset: D
 
 
 @router.get("/available-properties", dependencies=[Depends(is_admin)])
-async def get_available_properties(es: ElasticIndexDep):
+async def get_available_properties(es: SearchIndexDep):
     """
     Returns all available properties in the elasticsearch index
     :param es:
@@ -450,7 +450,7 @@ class FacetRequestBody(BaseModel):
 
 
 @router.post("/facet/{name}")
-async def get_facet(name: str, es_index: ElasticIndexDep, facet: FacetRequestBody, db: TenantDbDep,
+async def get_facet(name: str, es_index: SearchIndexDep, facet: FacetRequestBody, db: TenantDbDep,
               dataset: DatasetDep):
     """
     Get options for a given facet
@@ -526,7 +526,7 @@ async def get_tree(name: str, db: TenantDbDep, dataset: DatasetDep,
 
 @router.post("/facet/{name}/rebuild", status_code=status.HTTP_202_ACCEPTED)
 def rebuild_tree(name: str, background_tasks: BackgroundTasks, db: TenantDbDep, dataset: DatasetDep,
-                 es_index: ElasticIndexDep):
+                 es_index: SearchIndexDep):
     """
     Rebuild the tree for a given facet.
     :param dataset:
