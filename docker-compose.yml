@@ -6,5 +6,9 @@ services:
       - ES_SCHEME=http
       - ES_HOST=host.docker.internal
       - MONGO_CONNECTION=mongodb://host.docker.internal:27017/
+    # NOTE: tenant/admin domain resolution trusts the `Host` header, which is
+    # only safe when this service is exclusively reached through a reverse
+    # proxy that performs the per-tenant domain routing. Do not expose this
+    # port directly to untrusted networks in production.
     ports:
       - "8000:8000"
