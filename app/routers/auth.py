@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 from starlette import status
 
 from app.dependencies import MainDbDep, admin_domain, SettingsDep
@@ -130,7 +131,12 @@ async def create_user(user: User, db: MainDbDep):
     """
 
     user = User(username=user.username, password_hash=get_password_hash(user.password_hash))
-    db['users'].insert_one(user.model_dump())
+    await db['users'].create_index("username", unique=True)
+    try:
+        await db['users'].insert_one(user.model_dump())
+    except DuplicateKeyError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Username already exists") from e
     return {
         "username": user.username,
         "status": "created",

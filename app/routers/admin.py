@@ -35,7 +35,7 @@ async def post_tenants(db: MainDbDep, tenant: Tenant):
     Post new tenants.
     """
     try:
-        db.tenants.insert_one(tenant.model_dump())
+        await db.tenants.insert_one(tenant.model_dump())
         print(f"added dataset '{tenant.name}' to tenant")
     except Exception as e:
         print(f"problem with dataset: {tenant}")
@@ -49,6 +49,9 @@ async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
     """"
     Edit tenant.
     """
+    if tenant.name != name:
+        raise HTTPException(status_code=400, detail="Tenant name cannot be changed")
+
     try:
         result = await db['tenants'].update_one(
             {"name": name},
@@ -56,7 +59,7 @@ async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
         )
 
         if result.matched_count == 0:
-            print(f"tenant '{name}' not found")
+            raise HTTPException(status_code=404, detail=f"Tenant '{name}' not found")
 
     except Exception as e:
         print(f"problem with tenant: {tenant}", str(e))
