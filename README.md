@@ -10,6 +10,7 @@ Panoptes is a multi-tenant dataset browser and search tool. This repository cont
 * [Quick start](#quick-start)
     * [Installation](#installation)
     * [Usage](#usage)
+* [Testing](#testing)
 * [Documentation](#documentation)
 * [Support & Roadmap](#support-and-roadmap)
 * [Changelog](#changelog)
@@ -45,6 +46,21 @@ As this is a multi-tenant service, you should configure the domain names belongi
 multiple datasets per tenant, pointing it to the correct 
 
 Database configuration is still a work in progress and subject to change. For the current status and what to configure, see [the wiki](https://github.com/knaw-huc/panoptes/wiki/MongoDB-configuration).
+
+## Testing
+
+Unit tests use `pytest`, `pytest-asyncio` (for coroutine-based code) and `pytest-cov` (for coverage
+reporting). Install the dev dependencies and run the suite with Poetry:
+
+```shell
+poetry install
+poetry run pytest
+```
+
+Tests live under `tests/`, mirroring the structure of `app/`. External services (MongoDB,
+Elasticsearch, HTTP APIs) are mocked using `unittest.mock`, so the suite does not require any
+running infrastructure or the developer's local `.env` file—`tests/conftest.py` provides fake
+application settings instead.
 
 ## Documentation
 
