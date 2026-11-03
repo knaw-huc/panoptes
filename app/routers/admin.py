@@ -4,6 +4,8 @@ Endpoints for managing the Panoptes system as a whole.
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from pymongo.errors import DuplicateKeyError
+
 from app.dependencies import MainDbDep, admin_domain, ElasticsearchDep
 from app.models import Tenant
 from app.models import FacetType
@@ -37,6 +39,11 @@ async def post_tenants(db: MainDbDep, tenant: Tenant):
     try:
         await db.tenants.insert_one(tenant.model_dump())
         print(f"added dataset '{tenant.name}' to tenant")
+    except DuplicateKeyError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="Tenant name or domain already exists",
+        ) from e
     except Exception as e:
         print(f"problem with dataset: {tenant}")
         print("valisation error details:", str(e))
@@ -61,6 +68,11 @@ async def put_tenants(db: MainDbDep, tenant: Tenant, name: str):
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail=f"Tenant '{name}' not found")
 
+    except DuplicateKeyError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="Tenant name or domain already exists",
+        ) from e
     except Exception as e:
         print(f"problem with tenant: {tenant}", str(e))
         raise e
