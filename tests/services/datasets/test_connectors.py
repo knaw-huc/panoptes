@@ -23,28 +23,28 @@ class TestGetDatasetConnector:
     def test_returns_cmdi_connector_for_cmdi_type(self):
         """Select the CMDI editor connector for CMDI datasets."""
         dataset = make_dataset(data_type="cmdi")
-        es_index = MagicMock()
+        search_index = MagicMock()
 
-        connector = get_dataset_connector(dataset, es_index)
+        connector = get_dataset_connector(dataset, search_index)
 
         assert isinstance(connector, CMDIEditorConnector)
 
     def test_returns_elasticsearch_connector_for_elasticsearch_type(self):
         """Select the Elasticsearch connector for Elasticsearch datasets."""
         dataset = make_dataset(data_type="elasticsearch")
-        es_index = MagicMock()
+        search_index = MagicMock()
 
-        connector = get_dataset_connector(dataset, es_index)
+        connector = get_dataset_connector(dataset, search_index)
 
         assert isinstance(connector, SearchIndexConnector)
 
     def test_raises_for_unknown_type(self):
         """Reject an unsupported dataset type with an internal server error."""
         dataset = make_dataset(data_type="unknown")
-        es_index = MagicMock()
+        search_index = MagicMock()
 
         with pytest.raises(HTTPException) as exc_info:
-            get_dataset_connector(dataset, es_index)
+            get_dataset_connector(dataset, search_index)
 
         assert exc_info.value.status_code == 500
 
@@ -54,15 +54,15 @@ class TestElasticsearchConnector:
 
     def test_get_item_returns_es_result(self):
         """Return the indexed document using the dataset's identifier field."""
-        es_index = MagicMock()
-        es_index.by_identifier.return_value = ResultItem(es_result={"title": "foo"}, index="abc")
+        search_index = MagicMock()
+        search_index.by_identifier.return_value = ResultItem(es_result={"title": "foo"}, index="abc")
         dataset = make_dataset()
-        connector = SearchIndexConnector(dataset, es_index)
+        connector = SearchIndexConnector(dataset, search_index)
 
         result = connector.get_item("abc")
 
         assert result == {"title": "foo"}
-        es_index.by_identifier.assert_called_once_with("abc", dataset.detail_id)
+        search_index.by_identifier.assert_called_once_with("abc", dataset.detail_id)
 
 
 class TestCMDIEditorConnector:
@@ -70,12 +70,12 @@ class TestCMDIEditorConnector:
 
     def test_get_item_fetches_from_api(self):
         """Fetch the full record from the configured CMDI API."""
-        es_index = MagicMock()
-        es_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
+        search_index = MagicMock()
+        search_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
         dataset = make_dataset(data_type="cmdi", detail_id="id",
                                data_configuration={"id_property": "id",
                                                    "base_url": "https://example.org/api"})
-        connector = CMDIEditorConnector(dataset, es_index)
+        connector = CMDIEditorConnector(dataset, search_index)
 
         response = MagicMock()
         response.status_code = 200
@@ -90,15 +90,15 @@ class TestCMDIEditorConnector:
 
     def test_get_item_adds_basic_auth_header_when_configured(self):
         """Send a Basic authorization header when credentials are configured."""
-        es_index = MagicMock()
-        es_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
+        search_index = MagicMock()
+        search_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
         dataset = make_dataset(data_type="cmdi", detail_id="id",
                                data_configuration={
                                    "id_property": "id",
                                    "base_url": "https://example.org/api",
                                    "auth": {"username": "user", "password": "pass"},
                                })
-        connector = CMDIEditorConnector(dataset, es_index)
+        connector = CMDIEditorConnector(dataset, search_index)
 
         response = MagicMock()
         response.status_code = 200
@@ -113,12 +113,12 @@ class TestCMDIEditorConnector:
 
     def test_get_item_raises_504_on_timeout(self):
         """Translate an upstream request timeout into a gateway timeout."""
-        es_index = MagicMock()
-        es_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
+        search_index = MagicMock()
+        search_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
         dataset = make_dataset(data_type="cmdi", detail_id="id",
                                data_configuration={"id_property": "id",
                                                    "base_url": "https://example.org/api"})
-        connector = CMDIEditorConnector(dataset, es_index)
+        connector = CMDIEditorConnector(dataset, search_index)
 
         with patch("requests.get", side_effect=requests.exceptions.Timeout):
             with pytest.raises(HTTPException) as exc_info:
@@ -128,12 +128,12 @@ class TestCMDIEditorConnector:
 
     def test_get_item_raises_502_on_error_response(self):
         """Translate an upstream error response into a bad gateway error."""
-        es_index = MagicMock()
-        es_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
+        search_index = MagicMock()
+        search_index.by_identifier.return_value = ResultItem(es_result={"id": "123"}, index="abc")
         dataset = make_dataset(data_type="cmdi", detail_id="id",
                                data_configuration={"id_property": "id",
                                                    "base_url": "https://example.org/api"})
-        connector = CMDIEditorConnector(dataset, es_index)
+        connector = CMDIEditorConnector(dataset, search_index)
 
         response = MagicMock()
         response.status_code = 404

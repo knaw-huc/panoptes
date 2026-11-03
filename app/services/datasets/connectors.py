@@ -75,19 +75,19 @@ class CMDIEditorConnector(DatasetConnector):
     api_base: str
     id_property: str
     dataset: Dataset
-    es_index: Index
+    search_index: Index
     data_configuration: DataConfiguration
 
-    def __init__(self, dataset: Dataset, es_index: Index) -> None:
+    def __init__(self, dataset: Dataset, search_index: Index) -> None:
         self.dataset = dataset
         self.data_configuration = dataset.get_config()
         self.api_base = self.data_configuration.base_url
         self.id_property = self.data_configuration.id_property
-        self.es_index = es_index
+        self.search_index = search_index
 
 
     def get_item(self, identifier: str):
-        item = self.es_index.by_identifier(identifier, self.dataset.detail_id)
+        item = self.search_index.by_identifier(identifier, self.dataset.detail_id)
         item_id = item.get_prop(self.id_property)
 
         try:
@@ -117,11 +117,11 @@ class SearchIndexConnector(DatasetConnector):
     """
     Connector using the Elasticsearch index
     """
-    index: Index
+    search_index: Index
     dataset: Dataset
 
-    def __init__(self, dataset: Dataset, index: Index):
-        self.index = index
+    def __init__(self, dataset: Dataset, search_index: Index):
+        self.search_index = search_index
         self.dataset = dataset
 
     def get_item(self, identifier: str):
@@ -132,21 +132,21 @@ class SearchIndexConnector(DatasetConnector):
             be retrieved.
         :return: The Elasticsearch result corresponding to the provided identifier.
         """
-        item = self.index.by_identifier(identifier, self.dataset.detail_id)
+        item = self.search_index.by_identifier(identifier, self.dataset.detail_id)
         return item.es_result
 
 
-def get_dataset_connector(dataset: DatasetDep, elastic_index: SearchIndexDep) -> DatasetConnector:
+def get_dataset_connector(dataset: DatasetDep, search_index: SearchIndexDep) -> DatasetConnector:
     """
     Depends on the type
-    :param elastic_index:
+    :param search_index:
     :param dataset:
     :return:
     """
     if dataset.data_type == "cmdi":
-        return CMDIEditorConnector(dataset, elastic_index)
+        return CMDIEditorConnector(dataset, search_index)
     if dataset.data_type == "elasticsearch":
-        return SearchIndexConnector(dataset, elastic_index)
+        return SearchIndexConnector(dataset, search_index)
     raise HTTPException(status_code=500, detail="Dataset misconfigured")
 
 DatasetConnectorDep = Annotated[DatasetConnector, Depends(get_dataset_connector)]

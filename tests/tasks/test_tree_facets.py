@@ -50,8 +50,8 @@ async def test_construct_tree_inserts_nodes_for_each_tree_entry():
     facet_doc = {"_id": "facet1", "dataset_name": "my-dataset", "property": "path"}
     db, nodes_collection = make_db(facet_doc)
 
-    es_index = MagicMock()
-    es_index.get_tree.return_value = [
+    search_index = MagicMock()
+    search_index.get_tree.return_value = [
         {
             "value": "a",
             "name": "a",
@@ -61,7 +61,7 @@ async def test_construct_tree_inserts_nodes_for_each_tree_entry():
         }
     ]
 
-    await construct_tree("path", dataset, db, es_index)
+    await construct_tree("path", dataset, db, search_index)
 
     assert nodes_collection.insert_one.call_count == 2
     inserted_values = [call.args[0]["value"] for call in nodes_collection.insert_one.call_args_list]
