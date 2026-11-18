@@ -15,6 +15,7 @@ from elasticsearch import Elasticsearch
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
 from app.services.search.dataclasses import FilterOptions, SearchResult, ResultItem, Sort
+from app.services.search.index import Index as BaseIndex
 
 
 def parse_interval(interval_str):
@@ -51,7 +52,7 @@ def parse_interval(interval_str):
     return relativedelta(**kwargs)
 
 
-class Index:
+class ElasticsearchIndex(BaseIndex):
     """
     An elasticsearch index of articles.
     """
@@ -94,10 +95,10 @@ class Index:
         for k, v in m.items():
             add = f"{path}.{k}" if path else k
             if 'properties' in v:
-                fields = Index.get_fields_recursive(v['properties'], fields, path=add)
+                fields = ElasticsearchIndex.get_fields_recursive(v['properties'], fields, path=add)
             elif 'fields' in v:
                 fields.append(add)
-                fields = Index.get_fields_recursive(v['fields'], fields, path=add)
+                fields = ElasticsearchIndex.get_fields_recursive(v['fields'], fields, path=add)
             elif 'type' in v and v['type'] != 'object':
                 fields.append(add)
         return fields

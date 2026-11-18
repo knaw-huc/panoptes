@@ -10,7 +10,8 @@ from pymongo import AsyncMongoClient
 from pymongo.database import Database
 
 from app.config import get_settings, Settings
-from app.services.search.elastic_index import Index
+from app.services.search.elastic_index import ElasticsearchIndex
+from app.services.search.index import Index
 from app.models import Tenant, Dataset, Facet
 
 database_connections = {}
@@ -185,9 +186,9 @@ async def get_elasticsearch() -> Elasticsearch:
 ElasticsearchDep = Annotated[Elasticsearch, Depends(get_elasticsearch)]
 
 
-async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
+async def get_search_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     """
-    Get the Elasticsearch index for the current dataset.
+    Get the search index for the current dataset.
     :param db:
     :param dataset:
     :return:
@@ -199,9 +200,9 @@ async def get_es_index(dataset: DatasetDep, db: TenantDbDep) -> Index:
     facets_raw = await cursor.to_list()
 
     facets = [Facet(**facet) for facet in facets_raw]
-    return Index(database_connections["elastic"],
-                 dataset.es_index,
-                 facets,
-                 dataset.highlight_fields)
+    return ElasticsearchIndex(database_connections["elastic"],
+                              dataset.es_index,
+                              facets,
+                              dataset.highlight_fields)
 
-ElasticIndexDep = Annotated[Index, Depends(get_es_index)]
+SearchIndexDep = Annotated[Index, Depends(get_search_index)]

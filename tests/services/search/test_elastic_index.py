@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from app.exceptions.search import UnknownFacetsException
 from app.models import Facet, FacetType
 from app.services.search.dataclasses import FilterOptions
-from app.services.search.elastic_index import Index, parse_interval
+from app.services.search.elastic_index import ElasticsearchIndex, parse_interval
 
 
 def make_facet(**overrides) -> Facet:
@@ -25,9 +25,9 @@ def make_facet(**overrides) -> Facet:
     return Facet(**defaults)
 
 
-def make_index(client=None, facets=None, highlight_fields=None) -> Index:
+def make_index(client=None, facets=None, highlight_fields=None) -> ElasticsearchIndex:
     """Create an index using a mock client unless one is supplied."""
-    return Index(client or MagicMock(), "my-index", facets or [], highlight_fields)
+    return ElasticsearchIndex(client or MagicMock(), "my-index", facets or [], highlight_fields)
 
 
 class TestParseInterval:
@@ -61,15 +61,15 @@ class TestNoCase:
 
     def test_empty_string_returns_wildcard_only(self):
         """Use only a wildcard for an empty prefix."""
-        assert Index.no_case("") == ".*"
+        assert ElasticsearchIndex.no_case("") == ".*"
 
     def test_builds_case_insensitive_character_classes(self):
         """Include upper- and lowercase variants for each character."""
-        assert Index.no_case("ab") == "[Aa][Bb].*"
+        assert ElasticsearchIndex.no_case("ab") == "[Aa][Bb].*"
 
     def test_strips_whitespace(self):
         """Strip surrounding whitespace before building the pattern."""
-        assert Index.no_case("  a ") == "[Aa].*"
+        assert ElasticsearchIndex.no_case("  a ") == "[Aa].*"
 
 
 class TestGetFieldsRecursive:
@@ -82,7 +82,7 @@ class TestGetFieldsRecursive:
             "views": {"type": "integer"},
         }
 
-        fields = Index.get_fields_recursive(mapping)
+        fields = ElasticsearchIndex.get_fields_recursive(mapping)
 
         assert sorted(fields) == ["title", "views"]
 
@@ -96,7 +96,7 @@ class TestGetFieldsRecursive:
             }
         }
 
-        fields = Index.get_fields_recursive(mapping)
+        fields = ElasticsearchIndex.get_fields_recursive(mapping)
 
         assert fields == ["author.name"]
 
@@ -111,7 +111,7 @@ class TestGetFieldsRecursive:
             }
         }
 
-        fields = Index.get_fields_recursive(mapping)
+        fields = ElasticsearchIndex.get_fields_recursive(mapping)
 
         assert fields == ["title", "title.keyword"]
 
@@ -121,7 +121,7 @@ class TestGetFieldsRecursive:
             "metadata": {"type": "object"},
         }
 
-        fields = Index.get_fields_recursive(mapping)
+        fields = ElasticsearchIndex.get_fields_recursive(mapping)
 
         assert not fields
 
